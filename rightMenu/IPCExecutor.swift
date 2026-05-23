@@ -35,7 +35,9 @@ enum IPCExecutor {
             guard let path = request.paths.first else {
                 return notifyFail("新 Finder 窗口", "缺少路径")
             }
-            let escapedPath = path.replacingOccurrences(of: "\"", with: "\\\"")
+            let escapedPath = path
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
             let src = "tell application \"Finder\" to make new Finder window to (POSIX file \"\(escapedPath)\")"
             guard let script = NSAppleScript(source: src) else {
                 return notifyFail("新 Finder 窗口", "脚本初始化失败")
@@ -43,7 +45,7 @@ enum IPCExecutor {
             var error: NSDictionary?
             script.executeAndReturnError(&error)
             if error != nil {
-                notifyFail("新 Finder 窗口", "无法打开 \(path)")
+                return notifyFail("新 Finder 窗口", "无法打开 \(path)")
             }
         }
     }

@@ -58,16 +58,13 @@ class FinderSync: FIFinderSync {
         let submenu = NSMenu(title: "rightMenu")
 
         let targets = selectedTargets()
-        let hasFolder = targets.contains(where: { $0.hasDirectoryPath })
-        let hasFile = targets.contains(where: { !$0.hasDirectoryPath })
 
         // 用户是否明确右键选中了「全部都是文件夹」的若干项
         // （区别于右键空白区域：空白区域只有 targetedURL，没有 selectedItemURLs）
-        let selectedURLs = FIFinderSyncController.default().selectedItemURLs() ?? []
-        let allSelectedAreFolders = !selectedURLs.isEmpty && selectedURLs.allSatisfy { $0.hasDirectoryPath }
+        let allSelectedAreFolders = !targets.isEmpty && targets.allSatisfy { $0.hasDirectoryPath }
 
-        // 1. 在终端中打开（仅文件夹）—— 走 IPC 由主 App 执行
-        if hasFolder && !hasFile {
+        // 1. 在终端中打开（仅明确右键选中文件夹时显示）—— 走 IPC 由主 App 执行
+        if menuKind == .contextualMenuForItems && allSelectedAreFolders {
             submenu.addItem(menuItem(title: "在终端中打开", selector: #selector(actionOpenInTerminal(_:))))
         }
 
@@ -75,10 +72,10 @@ class FinderSync: FIFinderSync {
         submenu.addItem(menuItem(title: "在 VSCode 中打开", selector: #selector(actionOpenInVSCode(_:))))
 
         // 3. 复制完整路径 —— 扩展内执行（Pasteboard 在扩展内可用）
-        submenu.addItem(menuItem(title: "复制完整路径", selector: #selector(actionCopyFullPath(_:))))
+        submenu.addItem(menuItem(title: "复制路径", selector: #selector(actionCopyFullPath(_:))))
 
-        // 4. 复制文件名 —— 扩展内执行
-        submenu.addItem(menuItem(title: "复制文件名", selector: #selector(actionCopyFileName(_:))))
+        // 4. 复制文件(夹)名 —— 扩展内执行
+        submenu.addItem(menuItem(title: "复制文件(夹)名", selector: #selector(actionCopyFileName(_:))))
 
         // 5. 新建空白文件 —— 仅明确右键选中文件夹时显示 —— 走 IPC
         if menuKind == .contextualMenuForItems && allSelectedAreFolders {

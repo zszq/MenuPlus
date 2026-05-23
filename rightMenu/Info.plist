@@ -4,6 +4,8 @@
 <dict>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>需要访问 Finder 以便在新窗口中打开文件夹。</string>
 	<key>NSUserNotificationUsageDescription</key>
 	<string>rightMenu 使用通知告知操作状态。</string>
 	<key>CFBundleName</key>
