@@ -63,8 +63,8 @@ class FinderSync: FIFinderSync {
         // （区别于右键空白区域：空白区域只有 targetedURL，没有 selectedItemURLs）
         let allSelectedAreFolders = !targets.isEmpty && targets.allSatisfy { $0.hasDirectoryPath }
 
-        // 1. 在终端中打开（仅明确右键选中文件夹时显示）—— 走 IPC 由主 App 执行
-        if menuKind == .contextualMenuForItems && allSelectedAreFolders {
+        // 1. 在终端中打开（选中文件夹或右键空白区域时显示）—— 走 IPC 由主 App 执行
+        if allSelectedAreFolders {
             submenu.addItem(menuItem(title: "在终端中打开", selector: #selector(actionOpenInTerminal(_:))))
         }
 
@@ -77,13 +77,13 @@ class FinderSync: FIFinderSync {
         // 4. 复制文件(夹)名 —— 扩展内执行
         submenu.addItem(menuItem(title: "复制文件(夹)名", selector: #selector(actionCopyFileName(_:))))
 
-        // 5. 新建空白文件 —— 仅明确右键选中文件夹时显示 —— 走 IPC
-        if menuKind == .contextualMenuForItems && allSelectedAreFolders {
+        // 5. 新建空白文件 —— 文件夹时显示 —— 走 IPC
+        if allSelectedAreFolders {
             submenu.addItem(menuItem(title: "新建空白文件", selector: #selector(actionCreateBlankFile(_:))))
         }
 
-        // 6. 新建 txt 文件 —— 仅明确右键选中文件夹时显示 —— 走 IPC
-        if menuKind == .contextualMenuForItems && allSelectedAreFolders {
+        // 6. 新建 txt 文件 —— 文件夹时显示 —— 走 IPC
+        if allSelectedAreFolders {
             submenu.addItem(menuItem(title: "新建 txt 文件", selector: #selector(actionCreateTxtFile(_:))))
         }
 
