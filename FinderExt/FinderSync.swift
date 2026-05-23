@@ -48,13 +48,13 @@ class FinderSync: FIFinderSync {
         // 顶层菜单只放一个 "rightMenu" 项，子菜单挂载具体动作
         let topMenu = NSMenu(title: "")
         let parentItem = NSMenuItem(title: "rightMenu", action: nil, keyEquivalent: "")
-        parentItem.submenu = buildSubmenu()
+        parentItem.submenu = buildSubmenu(menuKind: menuKind)
         topMenu.addItem(parentItem)
         return topMenu
     }
 
     /// 构建 rightMenu 子菜单。按选中目标的类型（文件 / 文件夹）过滤可用动作。
-    private func buildSubmenu() -> NSMenu {
+    private func buildSubmenu(menuKind: FIMenuKind) -> NSMenu {
         let submenu = NSMenu(title: "rightMenu")
 
         let targets = selectedTargets()
@@ -80,20 +80,20 @@ class FinderSync: FIFinderSync {
         // 4. 复制文件名 —— 扩展内执行
         submenu.addItem(menuItem(title: "复制文件名", selector: #selector(actionCopyFileName(_:))))
 
-        // 5. 新建空白文件（仅文件夹）—— 走 IPC
-        // 显示条件保留：仅在用户明确右键文件夹时显示，避免对空白区域 / 文件展示
-        if allSelectedAreFolders {
+        // 5. 新建空白文件 —— 仅明确右键选中文件夹时显示 —— 走 IPC
+        if menuKind == .contextualMenuForItems && allSelectedAreFolders {
             submenu.addItem(menuItem(title: "新建空白文件", selector: #selector(actionCreateBlankFile(_:))))
         }
 
-        // 6. 新建 txt 文件（仅文件夹）—— 走 IPC
-        if allSelectedAreFolders {
+        // 6. 新建 txt 文件 —— 仅明确右键选中文件夹时显示 —— 走 IPC
+        if menuKind == .contextualMenuForItems && allSelectedAreFolders {
             submenu.addItem(menuItem(title: "新建 txt 文件", selector: #selector(actionCreateTxtFile(_:))))
         }
 
-        // 8. 在新 Finder 窗口中打开（仅文件夹）—— 走 IPC
-        if hasFolder && !hasFile {
-            submenu.addItem(menuItem(title: "在新 Finder 窗口中打开", selector: #selector(actionOpenInNewFinderWindow(_:))))
+        // 8. 在新窗口打开（必须右键文件夹图标，右键空白区域不显示）—— 走 IPC
+        // menuKind == .contextualMenuForItems 确保是右键选中项而非空白区域
+        if menuKind == .contextualMenuForItems && allSelectedAreFolders {
+            submenu.addItem(menuItem(title: "在新窗口打开", selector: #selector(actionOpenInNewFinderWindow(_:))))
         }
 
         return submenu
