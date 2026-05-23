@@ -1,2 +1,0 @@
-{"file": ".trellis/tasks/05-23-finder-context-menu/prd.md", "reason": "对照 Acceptance Criteria 验证所有菜单动作和主 App 功能"}
-{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "检查有无重复代码或可抽取的公共逻辑"}

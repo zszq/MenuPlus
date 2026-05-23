@@ -2,6 +2,7 @@
 .agents/
 .claude/
 .codex/
+.trellis/
 
 # macOS
 .DS_Store
