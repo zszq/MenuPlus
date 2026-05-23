@@ -2,7 +2,7 @@
 //  IPCAction.swift
 //  FinderExt
 //
-//  ⚠️ 这个文件必须和 rightMenu/IPCAction.swift 保持完全一致
+//  ⚠️ 这个文件必须和 MenuPlus/IPCAction.swift 保持完全一致
 //  （Xcode FileSystemSynchronizedRootGroup 不跨目录共享文件，
 //   故在两个 target 各放一份完全相同的源码；任何修改请同步两份。）
 //

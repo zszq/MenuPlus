@@ -11,12 +11,12 @@ import AppKit
 enum IPCClient {
     static func send(_ request: IPCRequest) {
         guard let url = request.toURL() else {
-            NSLog("[rightMenu/FinderExt] IPC 请求构造失败: action=%@", request.action.rawValue)
+            NSLog("[MenuPlus/FinderExt] IPC 请求构造失败: action=%@", request.action.rawValue)
             return
         }
         NSWorkspace.shared.open(url)
         NSLog(
-            "[rightMenu/FinderExt] 已发送 IPC: %@, paths=%d",
+            "[MenuPlus/FinderExt] 已发送 IPC: %@, paths=%d",
             request.action.rawValue,
             request.paths.count
         )

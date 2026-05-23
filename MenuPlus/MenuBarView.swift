@@ -1,6 +1,6 @@
 //
 //  MenuBarView.swift
-//  rightMenu
+//  MenuPlus
 //
 //  菜单栏下拉菜单内容
 //
@@ -32,7 +32,7 @@ struct MenuBarView: View {
         Divider()
 
         // 退出
-        Button("退出 rightMenu") {
+        Button("退出 MenuPlus") {
             NSApplication.shared.terminate(nil)
         }
     }

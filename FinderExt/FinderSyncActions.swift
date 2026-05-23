@@ -29,7 +29,7 @@ enum FinderSyncActions {
         let canOpen = NSWorkspace.shared.urlForApplication(toOpen: checkURL) != nil
 
         guard canOpen else {
-            NSLog("[rightMenu] 打开 VSCode 失败: 未找到 VSCode，请确认已安装 Visual Studio Code 并已注册 vscode:// URL scheme")
+            NSLog("[MenuPlus] 打开 VSCode 失败: 未找到 VSCode，请确认已安装 Visual Studio Code 并已注册 vscode:// URL scheme")
             return
         }
 

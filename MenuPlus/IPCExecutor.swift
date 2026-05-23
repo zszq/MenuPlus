@@ -1,6 +1,6 @@
 //
 //  IPCExecutor.swift
-//  rightMenu
+//  MenuPlus
 //
 //  主 App 端 IPC 动作执行器（无 sandbox 环境）。
 //  扩展进程因 sandbox 拒绝的写操作（创建文件、唤起外部进程等），
@@ -87,9 +87,9 @@ enum IPCExecutor {
     // MARK: - 失败反馈
 
     private static func notifyFail(_ action: String, _ reason: String) {
-        NSLog("[rightMenu/MainApp] 执行失败: %@ - %@", action, reason)
+        NSLog("[MenuPlus/MainApp] 执行失败: %@ - %@", action, reason)
         let content = UNMutableNotificationContent()
-        content.title = "rightMenu — \(action)失败"
+        content.title = "MenuPlus — \(action)失败"
         content.body = reason
         let req = UNNotificationRequest(
             identifier: UUID().uuidString,
@@ -98,7 +98,7 @@ enum IPCExecutor {
         )
         UNUserNotificationCenter.current().add(req) { error in
             if let error = error {
-                NSLog("[rightMenu/MainApp] 通知投递失败: %@", error.localizedDescription)
+                NSLog("[MenuPlus/MainApp] 通知投递失败: %@", error.localizedDescription)
             }
         }
     }

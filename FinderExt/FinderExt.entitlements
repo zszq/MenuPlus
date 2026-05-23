@@ -29,7 +29,7 @@
 
         <key>com.apple.security.application-groups</key>
         <array>
-            <string>group.zl.rightMenu</string>
+            <string>group.zl.MenuPlus</string>
         </array>
     -->
 </dict>

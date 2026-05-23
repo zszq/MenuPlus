@@ -1,6 +1,6 @@
 //
-//  rightMenuApp.swift
-//  rightMenu
+//  MenuPlusApp.swift
+//  MenuPlus
 //
 //  Created by l z on 2026/5/12.
 //
@@ -10,13 +10,13 @@ import AppKit
 import UserNotifications
 
 @main
-struct rightMenuApp: App {
+struct MenuPlusApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
         // 使用 MenuBarExtra 提供菜单栏图标
         // LSUIElement=YES 已在 Info.plist 中设置，确保无 Dock 图标
-        MenuBarExtra("rightMenu", systemImage: "filemenu.and.cursorarrow") {
+        MenuBarExtra("MenuPlus", systemImage: "filemenu.and.cursorarrow") {
             MenuBarView()
         }
         // 注：MenuBarExtra Scene 不支持 .onOpenURL，
@@ -30,9 +30,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 被拒也无所谓，IPCExecutor.notifyFail 会用 NSLog 兜底
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error = error {
-                NSLog("[rightMenu/MainApp] 通知权限申请失败: %@", error.localizedDescription)
+                NSLog("[MenuPlus/MainApp] 通知权限申请失败: %@", error.localizedDescription)
             } else {
-                NSLog("[rightMenu/MainApp] 通知权限 granted=%@", granted ? "true" : "false")
+                NSLog("[MenuPlus/MainApp] 通知权限 granted=%@", granted ? "true" : "false")
             }
         }
 
@@ -48,11 +48,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             guard let request = IPCRequest.from(url: url) else {
-                NSLog("[rightMenu/MainApp] 无法解析 URL: %@", url.absoluteString)
+                NSLog("[MenuPlus/MainApp] 无法解析 URL: %@", url.absoluteString)
                 continue
             }
             NSLog(
-                "[rightMenu/MainApp] 收到 IPC: %@, paths=%d",
+                "[MenuPlus/MainApp] 收到 IPC: %@, paths=%d",
                 request.action.rawValue,
                 request.paths.count
             )
@@ -63,7 +63,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showFinderExtensionOnboarding() {
         let alert = NSAlert()
         alert.messageText = "启用 Finder 扩展"
-        alert.informativeText = "请前往「系统设置 → 隐私与安全性 → 扩展 → Finder 扩展」，勾选 rightMenu 以启用右键菜单功能。"
+        alert.informativeText = "请前往「系统设置 → 隐私与安全性 → 扩展 → Finder 扩展」，勾选 MenuPlus 以启用右键菜单功能。"
         alert.alertStyle = .informational
         alert.addButton(withTitle: "前往系统设置")
         alert.addButton(withTitle: "稍后")

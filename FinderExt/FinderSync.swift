@@ -13,7 +13,7 @@ class FinderSync: FIFinderSync {
     override init() {
         super.init()
 
-        NSLog("rightMenu FinderSync 已加载，bundle: %@", Bundle.main.bundlePath as NSString)
+        NSLog("MenuPlus FinderSync 已加载，bundle: %@", Bundle.main.bundlePath as NSString)
 
         // 监控全盘，使右键菜单在任意路径都可用
         FIFinderSyncController.default().directoryURLs = [URL(fileURLWithPath: "/")]

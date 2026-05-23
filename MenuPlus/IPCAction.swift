@@ -1,12 +1,12 @@
 //
 //  IPCAction.swift
-//  rightMenu
+//  MenuPlus
 //
 //  ⚠️ 这个文件必须和 FinderExt/IPCAction.swift 保持完全一致
 //  （Xcode FileSystemSynchronizedRootGroup 不跨目录共享文件，
 //   故在两个 target 各放一份完全相同的源码；任何修改请同步两份。）
 //
-//  扩展与主 App 之间的 IPC 协议：
+//  扩展与 MenuPlus 主 App 之间的 IPC 协议：
 //      扩展端构造 IPCRequest → URL("rightmenu://<action>?paths=<base64-json>")
 //      主 App 端 application(_:open:) 收到后 IPCRequest.from(url:) 反向解析
 //
