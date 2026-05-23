@@ -2,7 +2,7 @@
 //  FinderSync.swift
 //  FinderExt
 //
-//  Finder Sync Extension 入口：注册全盘监控，提供 rightMenu 子菜单。
+//  Finder Sync Extension 入口：注册全盘监控，提供 MenuPlus 子菜单。
 //
 
 import Cocoa
@@ -35,8 +35,8 @@ class FinderSync: FIFinderSync {
 
     // MARK: - 工具栏项（保留兜底，未在主流程使用）
 
-    override var toolbarItemName: String { "rightMenu" }
-    override var toolbarItemToolTip: String { "rightMenu 右键菜单扩展" }
+    override var toolbarItemName: String { "MenuPlus" }
+    override var toolbarItemToolTip: String { "MenuPlus 右键菜单扩展" }
     override var toolbarItemImage: NSImage {
         NSImage(systemSymbolName: "filemenu.and.cursorarrow", accessibilityDescription: nil)
             ?? NSImage(named: NSImage.actionTemplateName)!
@@ -45,17 +45,31 @@ class FinderSync: FIFinderSync {
     // MARK: - 主菜单构建
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu {
-        // 顶层菜单只放一个 "rightMenu" 项，子菜单挂载具体动作
+        // 顶层菜单只放一个 "MenuPlus" 项，子菜单挂载具体动作
         let topMenu = NSMenu(title: "")
-        let parentItem = NSMenuItem(title: "rightMenu", action: nil, keyEquivalent: "")
+        let parentItem = NSMenuItem(title: "MenuPlus", action: nil, keyEquivalent: "")
         parentItem.submenu = buildSubmenu(menuKind: menuKind)
         topMenu.addItem(parentItem)
+
+        // 顶层"在终端打开"：仅对文件夹显示，无子菜单
+        if menuKind != .contextualMenuForSidebar {
+            let targets = selectedTargets()
+            let allFolders = !targets.isEmpty && targets.allSatisfy {
+                $0.hasDirectoryPath && !NSWorkspace.shared.isFilePackage(atPath: $0.path)
+            }
+            if allFolders {
+                let termItem = NSMenuItem(title: "在终端打开", action: #selector(actionOpenInTerminal(_:)), keyEquivalent: "")
+                termItem.target = self
+                topMenu.addItem(termItem)
+            }
+        }
+
         return topMenu
     }
 
-    /// 构建 rightMenu 子菜单。按选中目标的类型（文件 / 文件夹）过滤可用动作。
+    /// 构建 MenuPlus 子菜单。按选中目标的类型（文件 / 文件夹）过滤可用动作。
     private func buildSubmenu(menuKind: FIMenuKind) -> NSMenu {
-        let submenu = NSMenu(title: "rightMenu")
+        let submenu = NSMenu(title: "MenuPlus")
 
         let targets = selectedTargets()
 
