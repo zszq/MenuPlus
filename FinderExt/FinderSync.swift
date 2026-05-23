@@ -66,34 +66,32 @@ class FinderSync: FIFinderSync {
         let selectedURLs = FIFinderSyncController.default().selectedItemURLs() ?? []
         let allSelectedAreFolders = !selectedURLs.isEmpty && selectedURLs.allSatisfy { $0.hasDirectoryPath }
 
-        // 1. 在终端中打开（仅文件夹）
+        // 1. 在终端中打开（仅文件夹）—— 走 IPC 由主 App 执行
         if hasFolder && !hasFile {
             submenu.addItem(menuItem(title: "在终端中打开", selector: #selector(actionOpenInTerminal(_:))))
         }
 
-        // 2. 在 VSCode 中打开（文件 + 文件夹皆可）
+        // 2. 在 VSCode 中打开（文件 + 文件夹皆可）—— 扩展内执行（vscode:// 走 LaunchServices 同源不受限）
         submenu.addItem(menuItem(title: "在 VSCode 中打开", selector: #selector(actionOpenInVSCode(_:))))
 
-        // 3. 复制完整路径
+        // 3. 复制完整路径 —— 扩展内执行（Pasteboard 在扩展内可用）
         submenu.addItem(menuItem(title: "复制完整路径", selector: #selector(actionCopyFullPath(_:))))
 
-        // 4. 复制文件名
+        // 4. 复制文件名 —— 扩展内执行
         submenu.addItem(menuItem(title: "复制文件名", selector: #selector(actionCopyFileName(_:))))
 
-        // 5. 新建空白文件（仅文件夹）
-        // Sandbox 下 targetedURL() 不在 user-selected 权限范围，仅在用户明确右键文件夹时显示，避免写入失败
+        // 5. 新建空白文件（仅文件夹）—— 走 IPC
+        // 显示条件保留：仅在用户明确右键文件夹时显示，避免对空白区域 / 文件展示
         if allSelectedAreFolders {
             submenu.addItem(menuItem(title: "新建空白文件", selector: #selector(actionCreateBlankFile(_:))))
         }
 
-        // 6. 新建 txt 文件（仅文件夹）
-        // Sandbox 下 targetedURL() 不在 user-selected 权限范围，仅在用户明确右键文件夹时显示，避免写入失败
+        // 6. 新建 txt 文件（仅文件夹）—— 走 IPC
         if allSelectedAreFolders {
             submenu.addItem(menuItem(title: "新建 txt 文件", selector: #selector(actionCreateTxtFile(_:))))
         }
 
-        // 8. 在新 Finder 窗口中打开（仅文件夹）
-        // 不写文件，user-selected read-only 权限即可，保持原显示条件
+        // 8. 在新 Finder 窗口中打开（仅文件夹）—— 走 IPC
         if hasFolder && !hasFile {
             submenu.addItem(menuItem(title: "在新 Finder 窗口中打开", selector: #selector(actionOpenInNewFinderWindow(_:))))
         }
@@ -121,10 +119,13 @@ class FinderSync: FIFinderSync {
     }
 
     // MARK: - 动作分发
+    //
+    // 走 IPC 的动作（受 sandbox 限制）：1/5/6/8
+    // 扩展内直接执行的动作（sandbox 允许）：2/3/4
 
     @objc private func actionOpenInTerminal(_ sender: AnyObject?) {
         for url in selectedTargets() where url.hasDirectoryPath {
-            FinderSyncActions.openInTerminal(url: url)
+            IPCClient.send(IPCRequest(action: .openInTerminal, paths: [url.path]))
         }
     }
 
@@ -148,19 +149,19 @@ class FinderSync: FIFinderSync {
 
     @objc private func actionCreateBlankFile(_ sender: AnyObject?) {
         for url in selectedTargets() where url.hasDirectoryPath {
-            FinderSyncActions.createBlankFile(inDirectory: url, extension: nil)
+            IPCClient.send(IPCRequest(action: .createBlankFile, paths: [url.path]))
         }
     }
 
     @objc private func actionCreateTxtFile(_ sender: AnyObject?) {
         for url in selectedTargets() where url.hasDirectoryPath {
-            FinderSyncActions.createBlankFile(inDirectory: url, extension: "txt")
+            IPCClient.send(IPCRequest(action: .createTxtFile, paths: [url.path]))
         }
     }
 
     @objc private func actionOpenInNewFinderWindow(_ sender: AnyObject?) {
         for url in selectedTargets() where url.hasDirectoryPath {
-            FinderSyncActions.openInNewFinderWindow(url: url)
+            IPCClient.send(IPCRequest(action: .openInNewFinderWindow, paths: [url.path]))
         }
     }
 }

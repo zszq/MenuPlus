@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AppKit
+import UserNotifications
 
 @main
 struct rightMenuApp: App {
@@ -18,16 +19,44 @@ struct rightMenuApp: App {
         MenuBarExtra("rightMenu", systemImage: "filemenu.and.cursorarrow") {
             MenuBarView()
         }
+        // 注：MenuBarExtra Scene 不支持 .onOpenURL，
+        // URL 处理放在 AppDelegate 的 application(_:open:) 中。
     }
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 申请通知权限：扩展端动作失败时由主 App 投递通知
+        // 被拒也无所谓，IPCExecutor.notifyFail 会用 NSLog 兜底
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error = error {
+                NSLog("[rightMenu/MainApp] 通知权限申请失败: %@", error.localizedDescription)
+            } else {
+                NSLog("[rightMenu/MainApp] 通知权限 granted=%@", granted ? "true" : "false")
+            }
+        }
+
         // 首次启动时引导用户启用 Finder 扩展
         let hasShownOnboarding = UserDefaults.standard.bool(forKey: "hasShownFinderExtOnboarding")
         if !hasShownOnboarding {
             showFinderExtensionOnboarding()
             UserDefaults.standard.set(true, forKey: "hasShownFinderExtOnboarding")
+        }
+    }
+
+    /// 接收来自扩展的 rightmenu:// URL，反序列化后分发给 IPCExecutor。
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard let request = IPCRequest.from(url: url) else {
+                NSLog("[rightMenu/MainApp] 无法解析 URL: %@", url.absoluteString)
+                continue
+            }
+            NSLog(
+                "[rightMenu/MainApp] 收到 IPC: %@, paths=%d",
+                request.action.rawValue,
+                request.paths.count
+            )
+            IPCExecutor.execute(request)
         }
     }
 

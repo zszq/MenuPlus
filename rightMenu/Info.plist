@@ -4,8 +4,6 @@
 <dict>
 	<key>LSUIElement</key>
 	<true/>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>rightMenu 需要控制终端以在指定目录打开。</string>
 	<key>NSUserNotificationUsageDescription</key>
 	<string>rightMenu 使用通知告知操作状态。</string>
 	<key>CFBundleName</key>
@@ -22,5 +20,16 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>zl.rightMenu.scheme</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>rightmenu</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

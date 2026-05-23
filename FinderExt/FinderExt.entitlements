@@ -12,7 +12,8 @@
         因此动作 5/6（新建文件）在 FinderSync.swift 中限制为仅在用户明确右键
         文件夹时显示。
 
-        automation.apple-events 用于控制 Terminal.app（动作 1）。
+        动作 1（在终端中打开）已改为 NSWorkspace.open + LaunchServices，由系统将
+        URL 派发给 Terminal.app，不再需要 Apple Events 权限。
     -->
     <key>com.apple.security.app-sandbox</key>
     <true/>
@@ -21,8 +22,15 @@
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
 
-    <!-- 允许发送 Apple Events（用于控制 Terminal） -->
-    <key>com.apple.security.automation.apple-events</key>
-    <true/>
+    <!--
+        Phase 0 验证结论：ad-hoc 签名直接拒绝 application-groups entitlement
+        （Xcode 报 "requires a provisioning profile"），App Group 主路线在
+        当前签名环境下不可行。如未来接入 Apple Developer 账号，可恢复：
+
+        <key>com.apple.security.application-groups</key>
+        <array>
+            <string>group.zl.rightMenu</string>
+        </array>
+    -->
 </dict>
 </plist>

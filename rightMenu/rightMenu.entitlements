@@ -9,5 +9,16 @@
     <!-- AppleScript 自动化权限（用于控制 Terminal） -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
+
+    <!--
+        Phase 0 验证结论：ad-hoc 签名直接拒绝 application-groups entitlement
+        （Xcode 报 "requires a provisioning profile"），App Group 主路线在
+        当前签名环境下不可行。如未来接入 Apple Developer 账号，可恢复：
+
+        <key>com.apple.security.application-groups</key>
+        <array>
+            <string>group.zl.rightMenu</string>
+        </array>
+    -->
 </dict>
 </plist>
