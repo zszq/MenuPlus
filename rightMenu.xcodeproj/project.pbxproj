@@ -6,19 +6,90 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		781F9DAD2FC18FA700DF3CFC /* FinderExt.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 781F9DA62FC18FA700DF3CFC /* FinderExt.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		781F9DAB2FC18FA700DF3CFC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 78AC02862FB23B0900E4789A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 781F9DA52FC18FA700DF3CFC;
+			remoteInfo = FinderExt;
+		};
+		781F9DB62FC193AF00DF3CFC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 78AC02862FB23B0900E4789A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 781F9DA52FC18FA700DF3CFC;
+			remoteInfo = FinderExt;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		781F9D9F2FC18BD000DF3CFC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				781F9DAD2FC18FA700DF3CFC /* FinderExt.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		781F9DA62FC18FA700DF3CFC /* FinderExt.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FinderExt.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		78AC028E2FB23B0900E4789A /* rightMenu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = rightMenu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		781F9DB12FC18FA700DF3CFC /* Exceptions for "FinderExt" folder in "FinderExt" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 781F9DA52FC18FA700DF3CFC /* FinderExt */;
+		};
+		781F9DB82FC1B04C00DF3CFC /* Exceptions for "rightMenu" folder in "rightMenu" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 78AC028D2FB23B0900E4789A /* rightMenu */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		781F9DA72FC18FA700DF3CFC /* FinderExt */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				781F9DB12FC18FA700DF3CFC /* Exceptions for "FinderExt" folder in "FinderExt" target */,
+			);
+			path = FinderExt;
+			sourceTree = "<group>";
+		};
 		78AC02902FB23B0900E4789A /* rightMenu */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				781F9DB82FC1B04C00DF3CFC /* Exceptions for "rightMenu" folder in "rightMenu" target */,
+			);
 			path = rightMenu;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		781F9DA32FC18FA700DF3CFC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		78AC028B2FB23B0900E4789A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -29,10 +100,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		781F9DB52FC193AF00DF3CFC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		78AC02852FB23B0900E4789A = {
 			isa = PBXGroup;
 			children = (
 				78AC02902FB23B0900E4789A /* rightMenu */,
+				781F9DA72FC18FA700DF3CFC /* FinderExt */,
+				781F9DB52FC193AF00DF3CFC /* Frameworks */,
 				78AC028F2FB23B0900E4789A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +121,7 @@
 			isa = PBXGroup;
 			children = (
 				78AC028E2FB23B0900E4789A /* rightMenu.app */,
+				781F9DA62FC18FA700DF3CFC /* FinderExt.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,6 +129,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		781F9DA52FC18FA700DF3CFC /* FinderExt */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 781F9DAE2FC18FA700DF3CFC /* Build configuration list for PBXNativeTarget "FinderExt" */;
+			buildPhases = (
+				781F9DA22FC18FA700DF3CFC /* Sources */,
+				781F9DA32FC18FA700DF3CFC /* Frameworks */,
+				781F9DA42FC18FA700DF3CFC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				781F9DA72FC18FA700DF3CFC /* FinderExt */,
+			);
+			name = FinderExt;
+			packageProductDependencies = (
+			);
+			productName = FinderExt;
+			productReference = 781F9DA62FC18FA700DF3CFC /* FinderExt.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		78AC028D2FB23B0900E4789A /* rightMenu */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 78AC02992FB23B0A00E4789A /* Build configuration list for PBXNativeTarget "rightMenu" */;
@@ -55,10 +158,13 @@
 				78AC028A2FB23B0900E4789A /* Sources */,
 				78AC028B2FB23B0900E4789A /* Frameworks */,
 				78AC028C2FB23B0900E4789A /* Resources */,
+				781F9D9F2FC18BD000DF3CFC /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				781F9DAC2FC18FA700DF3CFC /* PBXTargetDependency */,
+				781F9DB72FC193AF00DF3CFC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				78AC02902FB23B0900E4789A /* rightMenu */,
@@ -80,6 +186,9 @@
 				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
+					781F9DA52FC18FA700DF3CFC = {
+						CreatedOnToolsVersion = 26.3;
+					};
 					78AC028D2FB23B0900E4789A = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -91,6 +200,7 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
 			);
 			mainGroup = 78AC02852FB23B0900E4789A;
 			minimizedProjectReferenceProxies = 1;
@@ -100,11 +210,19 @@
 			projectRoot = "";
 			targets = (
 				78AC028D2FB23B0900E4789A /* rightMenu */,
+				781F9DA52FC18FA700DF3CFC /* FinderExt */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		781F9DA42FC18FA700DF3CFC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		78AC028C2FB23B0900E4789A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,6 +233,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		781F9DA22FC18FA700DF3CFC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		78AC028A2FB23B0900E4789A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -124,7 +249,80 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		781F9DAC2FC18FA700DF3CFC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 781F9DA52FC18FA700DF3CFC /* FinderExt */;
+			targetProxy = 781F9DAB2FC18FA700DF3CFC /* PBXContainerItemProxy */;
+		};
+		781F9DB72FC193AF00DF3CFC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 781F9DA52FC18FA700DF3CFC /* FinderExt */;
+			targetProxy = 781F9DB62FC193AF00DF3CFC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		781F9DAF2FC18FA700DF3CFC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FinderExt/FinderExt.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FinderExt/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FinderExt;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = zl.rightMenu.FinderExt;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		781F9DB02FC18FA700DF3CFC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FinderExt/FinderExt.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FinderExt/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FinderExt;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = zl.rightMenu.FinderExt;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		78AC02972FB23B0A00E4789A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -248,18 +446,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = rightMenu/rightMenu.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = rightMenu/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = zl.rightMenu;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -278,18 +479,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = rightMenu/rightMenu.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = rightMenu/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = zl.rightMenu;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -306,6 +510,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		781F9DAE2FC18FA700DF3CFC /* Build configuration list for PBXNativeTarget "FinderExt" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				781F9DAF2FC18FA700DF3CFC /* Debug */,
+				781F9DB02FC18FA700DF3CFC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		78AC02892FB23B0900E4789A /* Build configuration list for PBXProject "rightMenu" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

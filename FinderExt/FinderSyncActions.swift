@@ -4,29 +4,40 @@
 //
 //  各菜单动作的具体实现逻辑。
 //
+//  注意：FinderSync 运行在 LSPlugInKitProxy 进程内，系统禁止在此进程中
+//  使用 UNUserNotificationCenter（会抛 NSInternalInconsistencyException
+//  导致 appex 崩溃）。因此本文件所有错误反馈一律走 NSLog，不要再引入任何
+//  用户通知 API。
+//
 
 import Cocoa
-import UserNotifications
 
 enum FinderSyncActions {
 
     // MARK: - 动作 1：在终端中打开（仅文件夹）
 
     static func openInTerminal(url: URL) {
-        // 对路径中的单引号进行转义，防止 AppleScript 注入
-        let safePath = url.path.replacingOccurrences(of: "'", with: "'\\''")
+        // 为 AppleScript 双引号字符串转义反斜杠和双引号；
+        // 单引号被 shell 包裹，需用 '\'' 序列转义。
+        let escapedForAppleScript = url.path
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedForShell = escapedForAppleScript
+            .replacingOccurrences(of: "'", with: "'\\''")
         let script = """
         tell application "Terminal"
             activate
-            do script "cd '\(safePath)'"
+            do script "cd '\(escapedForShell)'"
         end tell
         """
-        if let appleScript = NSAppleScript(source: script) {
-            var errorDict: NSDictionary?
-            appleScript.executeAndReturnError(&errorDict)
-            if let error = errorDict {
-                print("AppleScript error: \(error)")
-            }
+        guard let appleScript = NSAppleScript(source: script) else {
+            NSLog("[rightMenu] 打开终端: 无法创建 AppleScript 对象")
+            return
+        }
+        var errorDict: NSDictionary?
+        appleScript.executeAndReturnError(&errorDict)
+        if let error = errorDict {
+            NSLog("[rightMenu] 打开终端失败: %@（请确认已授予 rightMenu 控制 Terminal 的权限：系统设置 → 隐私与安全性 → 自动化）", String(describing: error))
         }
     }
 
@@ -38,10 +49,7 @@ enum FinderSyncActions {
         let canOpen = NSWorkspace.shared.urlForApplication(toOpen: checkURL) != nil
 
         guard canOpen else {
-            sendNotification(
-                title: "未找到 VSCode",
-                body: "请确认已安装 Visual Studio Code 并已注册 vscode:// URL scheme。"
-            )
+            NSLog("[rightMenu] 打开 VSCode 失败: 未找到 VSCode，请确认已安装 Visual Studio Code 并已注册 vscode:// URL scheme")
             return
         }
 
@@ -73,11 +81,10 @@ enum FinderSyncActions {
         let baseName: String
         let suffix: String
 
-        if let ext = fileExtension {
-            baseName = "新建文本文件"
+        baseName = "新建文件"
+        if let ext = fileExtension, !ext.isEmpty {
             suffix = ".\(ext)"
         } else {
-            baseName = "新建文件"
             suffix = ""
         }
 
@@ -91,49 +98,17 @@ enum FinderSyncActions {
             counter += 1
         }
 
-        fileManager.createFile(atPath: targetURL.path, contents: nil, attributes: nil)
-    }
-
-    // MARK: - 动作 7：显示/隐藏隐藏文件
-
-    /// 读取当前 Finder 隐藏文件显示状态。
-    static func hiddenFilesVisible() -> Bool {
-        let defaults = UserDefaults(suiteName: "com.apple.finder")
-        return defaults?.bool(forKey: "AppleShowAllFiles") ?? false
-    }
-
-    /// 切换 Finder 隐藏文件显示状态，并重启 Finder 使其生效。
-    static func toggleHiddenFiles() {
-        let currentValue = hiddenFilesVisible()
-        let newValue = !currentValue
-
-        // 写入 Finder 偏好设置
-        let defaults = UserDefaults(suiteName: "com.apple.finder")
-        defaults?.set(newValue, forKey: "AppleShowAllFiles")
-        defaults?.synchronize()
-
-        // 重启 Finder
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
-        process.arguments = ["Finder"]
-        try? process.run()
-    }
-
-    // MARK: - 辅助：发送用户通知
-
-    private static func sendNotification(title: String, body: String) {
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert]) { granted, _ in
-            guard granted else { return }
-            let content = UNMutableNotificationContent()
-            content.title = title
-            content.body = body
-            let request = UNNotificationRequest(
-                identifier: UUID().uuidString,
-                content: content,
-                trigger: nil
-            )
-            center.add(request)
+        let created = fileManager.createFile(atPath: targetURL.path, contents: nil, attributes: nil)
+        if !created {
+            NSLog("[rightMenu] 新建文件失败: 无法在 %@ 创建文件 %@，可能没有写入权限", directory.path, targetURL.lastPathComponent)
         }
+    }
+
+    // MARK: - 动作 8：在新 Finder 窗口中打开
+
+    /// 在新的 Finder 窗口中打开指定文件夹。
+    static func openInNewFinderWindow(url: URL) {
+        // NSWorkspace.open(_:) 默认会让 Finder 在新窗口中显示该目录
+        NSWorkspace.shared.open(url)
     }
 }

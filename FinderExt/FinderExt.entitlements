@@ -3,32 +3,26 @@
 <plist version="1.0">
 <dict>
     <!--
-        Finder Sync Extension 必须启用 App Sandbox。
-        但为了让扩展能够执行 killall Finder、创建文件等操作，
-        需要开放必要的权限。
+        FinderExt 在 macOS Sequoia + ad-hoc 签名下，必须启用 App Sandbox 才能被
+        PluginKit 收录，否则右键完全看不到菜单。
 
-        注意：如果主 App 关闭了 sandbox（直接分发），
-        Extension 仍需保持 sandbox=true（系统强制要求），
-        但可以申请宽松权限。
+        启用 sandbox 后，需要 user-selected.read-write 权限来支持 createFile 等
+        写入操作。注意：sandbox 模式下只有 selectedItemURLs() 显式选中的 item
+        才自动获得 user-selected 权限，targetedURL()（当前显示目录）没有这个权限，
+        因此动作 5/6（新建文件）在 FinderSync.swift 中限制为仅在用户明确右键
+        文件夹时显示。
+
+        automation.apple-events 用于控制 Terminal.app（动作 1）。
     -->
     <key>com.apple.security.app-sandbox</key>
     <true/>
 
-    <!-- 读取用户选择的文件/文件夹 -->
+    <!-- 允许读写用户明确选中的文件 / 文件夹（动作 5/6 createFile 需要） -->
     <key>com.apple.security.files.user-selected.read-write</key>
-    <true/>
-
-    <!-- 允许写入下载目录（创建文件时可能需要） -->
-    <key>com.apple.security.files.downloads.read-write</key>
     <true/>
 
     <!-- 允许发送 Apple Events（用于控制 Terminal） -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
-
-    <!-- 允许访问所有文件（需要在代码签名时申请，或使用 Hardened Runtime 豁免） -->
-    <!-- 注意：com.apple.security.files.all 是受限权限，仅用于提示配置 -->
-    <!-- <key>com.apple.security.files.all</key> -->
-    <!-- <true/> -->
 </dict>
 </plist>

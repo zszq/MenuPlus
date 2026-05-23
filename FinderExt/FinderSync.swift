@@ -2,7 +2,7 @@
 //  FinderSync.swift
 //  FinderExt
 //
-//  Finder Sync Extension 主类，负责注册监控目录和提供右键菜单。
+//  Finder Sync Extension 入口：注册全盘监控，提供 rightMenu 子菜单。
 //
 
 import Cocoa
@@ -12,188 +12,155 @@ class FinderSync: FIFinderSync {
 
     override init() {
         super.init()
-        // 监控根目录（全盘）
+
+        NSLog("rightMenu FinderSync 已加载，bundle: %@", Bundle.main.bundlePath as NSString)
+
+        // 监控全盘，使右键菜单在任意路径都可用
         FIFinderSyncController.default().directoryURLs = [URL(fileURLWithPath: "/")]
     }
 
-    // MARK: - 菜单构建
+    // MARK: - 基础观察方法（保留日志，便于真机调试）
+
+    override func beginObservingDirectory(at url: URL) {
+        // 用户开始查看某个目录时触发，无需特殊处理
+    }
+
+    override func endObservingDirectory(at url: URL) {
+        // 用户离开目录时触发
+    }
+
+    override func requestBadgeIdentifier(for url: URL) {
+        // 当前 MVP 不需要 badge
+    }
+
+    // MARK: - 工具栏项（保留兜底，未在主流程使用）
+
+    override var toolbarItemName: String { "rightMenu" }
+    override var toolbarItemToolTip: String { "rightMenu 右键菜单扩展" }
+    override var toolbarItemImage: NSImage {
+        NSImage(systemSymbolName: "filemenu.and.cursorarrow", accessibilityDescription: nil)
+            ?? NSImage(named: NSImage.actionTemplateName)!
+    }
+
+    // MARK: - 主菜单构建
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu {
-        let menu = NSMenu(title: "")
-
-        // 获取当前选中项
-        let items = FIFinderSyncController.default().selectedItemURLs() ?? []
-        // 判断选中项是否包含文件夹（用于决定显示哪些菜单项）
-        let hasFolder = items.contains { url in
-            var isDir: ObjCBool = false
-            FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
-            return isDir.boolValue
-        }
-        let hasFile = items.contains { url in
-            var isDir: ObjCBool = false
-            FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
-            return !isDir.boolValue
-        }
-
-        // 动作 1：在终端中打开（仅文件夹）
-        if hasFolder {
-            let terminalItem = NSMenuItem(
-                title: "在终端中打开",
-                action: #selector(openInTerminal),
-                keyEquivalent: ""
-            )
-            terminalItem.target = self
-            menu.addItem(terminalItem)
-        }
-
-        // 动作 2：在 VSCode 中打开（文件夹 + 文件）
-        if hasFolder || hasFile {
-            let vscodeItem = NSMenuItem(
-                title: "在 VSCode 中打开",
-                action: #selector(openInVSCode),
-                keyEquivalent: ""
-            )
-            vscodeItem.target = self
-            menu.addItem(vscodeItem)
-        }
-
-        // 动作 3：复制完整路径（文件夹 + 文件）
-        if hasFolder || hasFile {
-            let copyPathItem = NSMenuItem(
-                title: "复制完整路径",
-                action: #selector(copyFullPath),
-                keyEquivalent: ""
-            )
-            copyPathItem.target = self
-            menu.addItem(copyPathItem)
-        }
-
-        // 动作 4：复制文件名（文件夹 + 文件）
-        if hasFolder || hasFile {
-            let copyNameItem = NSMenuItem(
-                title: "复制文件名",
-                action: #selector(copyFileName),
-                keyEquivalent: ""
-            )
-            copyNameItem.target = self
-            menu.addItem(copyNameItem)
-        }
-
-        // 动作 5：新建空白文件（仅文件夹）
-        if hasFolder {
-            let newFileItem = NSMenuItem(
-                title: "新建空白文件",
-                action: #selector(createBlankFile),
-                keyEquivalent: ""
-            )
-            newFileItem.target = self
-            menu.addItem(newFileItem)
-        }
-
-        // 动作 6：新建 txt 文件（仅文件夹）
-        if hasFolder {
-            let newTxtItem = NSMenuItem(
-                title: "新建 txt 文件",
-                action: #selector(createTxtFile),
-                keyEquivalent: ""
-            )
-            newTxtItem.target = self
-            menu.addItem(newTxtItem)
-        }
-
-        // 动作 7：显示/隐藏隐藏文件（文件夹 + 文件）
-        if hasFolder || hasFile {
-            let currentlyShowing = FinderSyncActions.hiddenFilesVisible()
-            let toggleTitle = currentlyShowing ? "隐藏隐藏文件" : "显示隐藏文件"
-            let toggleItem = NSMenuItem(
-                title: toggleTitle,
-                action: #selector(toggleHiddenFiles),
-                keyEquivalent: ""
-            )
-            toggleItem.target = self
-            menu.addItem(toggleItem)
-        }
-
-        // 动作 8：在新 Finder 窗口中打开（仅文件夹）
-        if hasFolder {
-            let newWindowItem = NSMenuItem(
-                title: "在新 Finder 窗口中打开",
-                action: #selector(openInNewFinderWindow),
-                keyEquivalent: ""
-            )
-            newWindowItem.target = self
-            menu.addItem(newWindowItem)
-        }
-
-        return menu
+        // 顶层菜单只放一个 "rightMenu" 项，子菜单挂载具体动作
+        let topMenu = NSMenu(title: "")
+        let parentItem = NSMenuItem(title: "rightMenu", action: nil, keyEquivalent: "")
+        parentItem.submenu = buildSubmenu()
+        topMenu.addItem(parentItem)
+        return topMenu
     }
 
-    // MARK: - 动作处理
+    /// 构建 rightMenu 子菜单。按选中目标的类型（文件 / 文件夹）过滤可用动作。
+    private func buildSubmenu() -> NSMenu {
+        let submenu = NSMenu(title: "rightMenu")
 
-    @objc func openInTerminal() {
-        guard let items = FIFinderSyncController.default().selectedItemURLs() else { return }
-        for url in items {
-            var isDir: ObjCBool = false
-            FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
-            if isDir.boolValue {
-                FinderSyncActions.openInTerminal(url: url)
-            }
+        let targets = selectedTargets()
+        let hasFolder = targets.contains(where: { $0.hasDirectoryPath })
+        let hasFile = targets.contains(where: { !$0.hasDirectoryPath })
+
+        // 用户是否明确右键选中了「全部都是文件夹」的若干项
+        // （区别于右键空白区域：空白区域只有 targetedURL，没有 selectedItemURLs）
+        let selectedURLs = FIFinderSyncController.default().selectedItemURLs() ?? []
+        let allSelectedAreFolders = !selectedURLs.isEmpty && selectedURLs.allSatisfy { $0.hasDirectoryPath }
+
+        // 1. 在终端中打开（仅文件夹）
+        if hasFolder && !hasFile {
+            submenu.addItem(menuItem(title: "在终端中打开", selector: #selector(actionOpenInTerminal(_:))))
+        }
+
+        // 2. 在 VSCode 中打开（文件 + 文件夹皆可）
+        submenu.addItem(menuItem(title: "在 VSCode 中打开", selector: #selector(actionOpenInVSCode(_:))))
+
+        // 3. 复制完整路径
+        submenu.addItem(menuItem(title: "复制完整路径", selector: #selector(actionCopyFullPath(_:))))
+
+        // 4. 复制文件名
+        submenu.addItem(menuItem(title: "复制文件名", selector: #selector(actionCopyFileName(_:))))
+
+        // 5. 新建空白文件（仅文件夹）
+        // Sandbox 下 targetedURL() 不在 user-selected 权限范围，仅在用户明确右键文件夹时显示，避免写入失败
+        if allSelectedAreFolders {
+            submenu.addItem(menuItem(title: "新建空白文件", selector: #selector(actionCreateBlankFile(_:))))
+        }
+
+        // 6. 新建 txt 文件（仅文件夹）
+        // Sandbox 下 targetedURL() 不在 user-selected 权限范围，仅在用户明确右键文件夹时显示，避免写入失败
+        if allSelectedAreFolders {
+            submenu.addItem(menuItem(title: "新建 txt 文件", selector: #selector(actionCreateTxtFile(_:))))
+        }
+
+        // 8. 在新 Finder 窗口中打开（仅文件夹）
+        // 不写文件，user-selected read-only 权限即可，保持原显示条件
+        if hasFolder && !hasFile {
+            submenu.addItem(menuItem(title: "在新 Finder 窗口中打开", selector: #selector(actionOpenInNewFinderWindow(_:))))
+        }
+
+        return submenu
+    }
+
+    /// 统一构造一个 target=self 的 NSMenuItem。
+    private func menuItem(title: String, selector: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
+        item.target = self
+        return item
+    }
+
+    /// 获取当前右键选中的目标 URL 列表。
+    /// 优先使用 selectedItemURLs；若为空（例如右键空白区域），回退到 targetedURL。
+    private func selectedTargets() -> [URL] {
+        if let selected = FIFinderSyncController.default().selectedItemURLs(), !selected.isEmpty {
+            return selected
+        }
+        if let target = FIFinderSyncController.default().targetedURL() {
+            return [target]
+        }
+        return []
+    }
+
+    // MARK: - 动作分发
+
+    @objc private func actionOpenInTerminal(_ sender: AnyObject?) {
+        for url in selectedTargets() where url.hasDirectoryPath {
+            FinderSyncActions.openInTerminal(url: url)
         }
     }
 
-    @objc func openInVSCode() {
-        guard let items = FIFinderSyncController.default().selectedItemURLs() else { return }
-        for url in items {
+    @objc private func actionOpenInVSCode(_ sender: AnyObject?) {
+        for url in selectedTargets() {
             FinderSyncActions.openInVSCode(url: url)
         }
     }
 
-    @objc func copyFullPath() {
-        guard let items = FIFinderSyncController.default().selectedItemURLs() else { return }
-        let paths = items.map { $0.path }.joined(separator: "\n")
-        FinderSyncActions.copyToClipboard(paths)
+    @objc private func actionCopyFullPath(_ sender: AnyObject?) {
+        let paths = selectedTargets().map { $0.path }
+        guard !paths.isEmpty else { return }
+        FinderSyncActions.copyToClipboard(paths.joined(separator: "\n"))
     }
 
-    @objc func copyFileName() {
-        guard let items = FIFinderSyncController.default().selectedItemURLs() else { return }
-        let names = items.map { $0.lastPathComponent }.joined(separator: "\n")
-        FinderSyncActions.copyToClipboard(names)
+    @objc private func actionCopyFileName(_ sender: AnyObject?) {
+        let names = selectedTargets().map { $0.lastPathComponent }
+        guard !names.isEmpty else { return }
+        FinderSyncActions.copyToClipboard(names.joined(separator: "\n"))
     }
 
-    @objc func createBlankFile() {
-        guard let items = FIFinderSyncController.default().selectedItemURLs() else { return }
-        for url in items {
-            var isDir: ObjCBool = false
-            FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
-            if isDir.boolValue {
-                FinderSyncActions.createBlankFile(inDirectory: url, extension: nil)
-            }
+    @objc private func actionCreateBlankFile(_ sender: AnyObject?) {
+        for url in selectedTargets() where url.hasDirectoryPath {
+            FinderSyncActions.createBlankFile(inDirectory: url, extension: nil)
         }
     }
 
-    @objc func createTxtFile() {
-        guard let items = FIFinderSyncController.default().selectedItemURLs() else { return }
-        for url in items {
-            var isDir: ObjCBool = false
-            FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
-            if isDir.boolValue {
-                FinderSyncActions.createBlankFile(inDirectory: url, extension: "txt")
-            }
+    @objc private func actionCreateTxtFile(_ sender: AnyObject?) {
+        for url in selectedTargets() where url.hasDirectoryPath {
+            FinderSyncActions.createBlankFile(inDirectory: url, extension: "txt")
         }
     }
 
-    @objc func toggleHiddenFiles() {
-        FinderSyncActions.toggleHiddenFiles()
-    }
-
-    @objc func openInNewFinderWindow() {
-        guard let items = FIFinderSyncController.default().selectedItemURLs() else { return }
-        for url in items {
-            var isDir: ObjCBool = false
-            FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
-            if isDir.boolValue {
-                NSWorkspace.shared.open(url)
-            }
+    @objc private func actionOpenInNewFinderWindow(_ sender: AnyObject?) {
+        for url in selectedTargets() where url.hasDirectoryPath {
+            FinderSyncActions.openInNewFinderWindow(url: url)
         }
     }
 }

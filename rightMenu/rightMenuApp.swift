@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import ServiceManagement
+import AppKit
 
 @main
 struct rightMenuApp: App {
@@ -40,13 +40,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "稍后")
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            openExtensionsPreferences()
+            ExtensionsPreferences.open()
         }
     }
+}
 
-    private func openExtensionsPreferences() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.extensions") {
-            NSWorkspace.shared.open(url)
+/// 跳转到「系统设置 → 扩展 → Finder 扩展」面板。
+/// 主 App 内的菜单栏入口和首次启动引导都复用此实现，避免分裂。
+enum ExtensionsPreferences {
+    static func open() {
+        // 优先尝试 macOS 13+ 的 Finder 扩展直达 URL
+        if let finderExtURL = URL(string: "x-apple.systempreferences:com.apple.ExtensionsPreferences?Finder"),
+           NSWorkspace.shared.open(finderExtURL) {
+            return
+        }
+        // 兜底：打开通用扩展偏好面板
+        if let fallback = URL(string: "x-apple.systempreferences:com.apple.preference.extensions") {
+            NSWorkspace.shared.open(fallback)
         }
     }
 }
