@@ -23,6 +23,7 @@ These guides help you **ask the right questions before coding**.
 |-------|---------|-------------|
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
 | [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
+| [macOS Extension Thinking Guide](./macos-extension-thinking-guide.md) | Sandbox 约束、IPC、Xcode 配置陷阱 | 新增 FinderSync 菜单项或改构建配置前 |
 
 ---
 
