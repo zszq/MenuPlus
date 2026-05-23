@@ -38,6 +38,8 @@ enum IPCExecutor {
             let escapedPath = path
                 .replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\r", with: "\\r")
             let src = "tell application \"Finder\" to make new Finder window to (POSIX file \"\(escapedPath)\")"
             guard let script = NSAppleScript(source: src) else {
                 return notifyFail("新 Finder 窗口", "脚本初始化失败")
