@@ -2,7 +2,7 @@
 //  IPCClient.swift
 //  FinderExt
 //
-//  扩展端的 IPC 客户端：把 IPCRequest 编码成 rightmenu:// URL 后
+//  扩展端的 IPC 客户端：把 IPCRequest 编码成 menuplus:// URL 后
 //  交给 LaunchServices 唤起主 App 执行（绕开 FinderSync 的 sandbox 限制）。
 //
 

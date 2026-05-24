@@ -27,7 +27,7 @@
 			<string>zl.MenuPlus.scheme</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>rightmenu</string>
+				<string>menuplus</string>
 			</array>
 		</dict>
 	</array>

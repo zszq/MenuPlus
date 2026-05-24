@@ -51,7 +51,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// 接收来自扩展的 rightmenu:// URL，反序列化后分发给 IPCExecutor。
+    /// 接收来自扩展的 menuplus:// URL，反序列化后分发给 IPCExecutor。
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             guard let request = IPCRequest.from(url: url) else {

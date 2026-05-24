@@ -4,7 +4,7 @@
 //
 //  主 App 端 IPC 动作执行器。
 //  需要在主 App 进程执行的动作（如控制 Terminal、控制 Finder AppleScript）
-//  通过 rightmenu:// URL 转交给这里执行。
+//  通过 menuplus:// URL 转交给这里执行。
 //  文件创建操作已移至 FinderExt/FinderSyncActions，由扩展进程直接执行。
 //
 
