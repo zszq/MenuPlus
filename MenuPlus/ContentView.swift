@@ -33,6 +33,8 @@ struct ContentView: View {
 
                         GroupBox("通用") {
                             VStack(alignment: .leading, spacing: 12) {
+                                menuBarIconRow()
+
                                 launchAtLoginRow()
 
                                 statusRow(
@@ -163,6 +165,30 @@ struct ContentView: View {
             }
 
             Spacer()
+        }
+    }
+
+    private func menuBarIconRow() -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Circle()
+                .fill(runtime.showsMenuBarIcon ? Color.green : Color.orange)
+                .frame(width: 10, height: 10)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("菜单栏图标")
+                    .font(.headline)
+                Text(runtime.showsMenuBarIcon ? "已显示" : "已隐藏")
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { runtime.showsMenuBarIcon },
+                set: { runtime.setShowsMenuBarIcon($0) }
+            ))
+                .labelsHidden()
+                .toggleStyle(.switch)
         }
     }
 

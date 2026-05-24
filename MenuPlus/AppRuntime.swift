@@ -13,6 +13,7 @@ enum BundleInstallState {
 final class AppRuntime: ObservableObject {
     static let shared = AppRuntime()
 
+    @Published private(set) var showsMenuBarIcon: Bool
     @Published private(set) var isFinderExtensionEnabled = FIFinderSyncController.isExtensionEnabled
     @Published private(set) var notificationStatus: UNAuthorizationStatus = .notDetermined
     @Published private(set) var bundleInstallState: BundleInstallState = .other
@@ -21,7 +22,17 @@ final class AppRuntime: ObservableObject {
     private var hasPresentedDisabledExtensionAlertThisLaunch = false
     private var hasPresentedBundleLocationAlertThisLaunch = false
 
-    private init() {}
+    private enum DefaultsKey {
+        static let showsMenuBarIcon = "showsMenuBarIcon"
+    }
+
+    private init() {
+        if UserDefaults.standard.object(forKey: DefaultsKey.showsMenuBarIcon) == nil {
+            showsMenuBarIcon = true
+        } else {
+            showsMenuBarIcon = UserDefaults.standard.bool(forKey: DefaultsKey.showsMenuBarIcon)
+        }
+    }
 
     func refreshStatus() {
         isFinderExtensionEnabled = FIFinderSyncController.isExtensionEnabled
@@ -48,6 +59,13 @@ final class AppRuntime: ObservableObject {
                 }
             }
         }
+    }
+
+    func setShowsMenuBarIcon(_ isShown: Bool) {
+        guard showsMenuBarIcon != isShown else { return }
+
+        showsMenuBarIcon = isShown
+        UserDefaults.standard.set(isShown, forKey: DefaultsKey.showsMenuBarIcon)
     }
 
     func presentStartupGuidanceIfNeeded() {

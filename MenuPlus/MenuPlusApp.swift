@@ -14,7 +14,14 @@ struct MenuPlusApp: App {
     @StateObject private var runtime = AppRuntime.shared
 
     var body: some Scene {
-        MenuBarExtra("MenuPlus", systemImage: "filemenu.and.cursorarrow") {
+        MenuBarExtra(
+            "MenuPlus",
+            systemImage: "filemenu.and.cursorarrow",
+            isInserted: Binding(
+                get: { runtime.showsMenuBarIcon },
+                set: { runtime.setShowsMenuBarIcon($0) }
+            )
+        ) {
             MenuBarView()
                 .environmentObject(runtime)
         }
@@ -32,11 +39,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        AppRuntime.shared.presentStartupGuidanceIfNeeded()
+        if AppRuntime.shared.showsMenuBarIcon {
+            AppRuntime.shared.presentStartupGuidanceIfNeeded()
+        } else {
+            showSettingsWindow()
+        }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
         AppRuntime.shared.refreshStatus()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showSettingsWindow()
+        return false
     }
 
     /// 接收来自扩展的 menuplus:// URL，反序列化后分发给 IPCExecutor。
