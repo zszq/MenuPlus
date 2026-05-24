@@ -89,40 +89,49 @@ enum IPCExecutor {
         }
 
         for path in paths {
-            openFinderWindow(path: path)
+            do {
+                try SecurityScopedDirectoryStore.withAccess(to: path, actionName: "在新窗口打开") { directoryURL in
+                    try openFinderWindow(directoryURL: directoryURL)
+                }
+            } catch {
+                FailurePresenter.present(action: "在新窗口打开", reason: error.localizedDescription)
+            }
         }
     }
 
-    private static func openFinderWindow(path: String) {
-        let escapedPath = path
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
-            .replacingOccurrences(of: "\r", with: "\\r")
+    private static func openFinderWindow(directoryURL: URL) throws {
+        let finderAppURL =
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder")
+            ?? URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
 
-        let source = "tell application \"Finder\" to make new Finder window to (POSIX file \"\(escapedPath)\")"
-        guard let script = NSAppleScript(source: source) else {
-            return FailurePresenter.present(action: "在新窗口打开", reason: "脚本初始化失败")
-        }
-
-        var error: NSDictionary?
-        script.executeAndReturnError(&error)
-        guard let error else { return }
-
-        let errorNumber = error[NSAppleScript.errorNumber] as? Int ?? 0
-        let message = (error[NSAppleScript.errorMessage] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let reason = message?.isEmpty == false ? message! : "无法打开 \(path)"
-
-        if errorNumber == -1743 {
-            FailurePresenter.present(
-                action: "在新窗口打开",
-                reason: reason,
-                guidance: .automation(targetApp: "Finder")
+        guard FileManager.default.fileExists(atPath: finderAppURL.path) else {
+            throw NSError(
+                domain: "MenuPlus.IPCExecutor",
+                code: 11,
+                userInfo: [NSLocalizedDescriptionKey: "未找到 Finder.app"]
             )
-            return
         }
 
-        FailurePresenter.present(action: "在新窗口打开", reason: reason)
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var completionError: Error?
+
+        NSWorkspace.shared.open(
+            [directoryURL],
+            withApplicationAt: finderAppURL,
+            configuration: configuration
+        ) { _, error in
+            completionError = error
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+
+        if let completionError {
+            throw completionError
+        }
     }
 
     private static func createFiles(

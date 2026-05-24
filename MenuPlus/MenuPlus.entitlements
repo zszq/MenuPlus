@@ -5,9 +5,5 @@
 	<!-- 允许主 App 持久化 security-scoped bookmark，避免每次“新建文件”都重新弹授权 -->
 	<key>com.apple.security.files.bookmarks.app-scope</key>
 	<true/>
-
-	<!-- “在新窗口打开” 仍通过 Apple Events 控制 Finder，需要系统自动化授权 -->
-	<key>com.apple.security.automation.apple-events</key>
-	<true/>
 </dict>
 </plist>

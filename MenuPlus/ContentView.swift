@@ -79,7 +79,7 @@ struct ContentView: View {
                         .foregroundColor(runtime.bundleInstallState == .applications ? .secondary : .orange)
                     Text("在 Finder 空白区域执行“新建文件 / 新建 txt 文件”时，MenuPlus 会弹出目录授权面板；请直接选中当前目录本身，后续会自动复用这次授权。")
                         .foregroundColor(.secondary)
-                    Text("“在新窗口打开”这类需要控制 Finder 的动作，会在首次使用时触发系统自动化授权；如果你曾拒绝，请到“系统设置 → 隐私与安全性 → 自动化”重新勾选 MenuPlus。")
+                    Text("“在新窗口打开”会由主 App 直接把目录交给 Finder 打开；如果系统要求目录访问权限，请直接授权当前目录，后续会自动复用。")
                         .foregroundColor(.secondary)
 
                     HStack {
