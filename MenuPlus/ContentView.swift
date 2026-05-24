@@ -50,7 +50,7 @@ struct ContentView: View {
                                     title: "Finder 扩展",
                                     value: runtime.isFinderExtensionEnabled ? "已启用" : "未启用",
                                     color: runtime.isFinderExtensionEnabled ? .green : .orange,
-                                    buttonTitle: runtime.isFinderExtensionEnabled ? "重新打开扩展管理…" : "立即启用…"
+                                    buttonTitle: "打开扩展设置"
                                 ) {
                                     runtime.openFinderExtensionManagement()
                                 }
@@ -83,7 +83,7 @@ struct ContentView: View {
                         HStack {
                             Spacer()
                             Text("版本 \(Bundle.main.shortVersion)")
-                                .font(.footnote)
+                                .font(.body)
                                 .foregroundColor(.secondary)
                         }
 
