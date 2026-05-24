@@ -16,7 +16,7 @@ import Foundation
 enum IPCAction: String, Codable {
     case openInTerminal
     case openInNewFinderWindow
-    // 未来可扩展（如 toggleHiddenFiles 等）
+    // 未来可扩展更多动作
 }
 
 struct IPCRequest {

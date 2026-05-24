@@ -103,7 +103,7 @@ class FinderSync: FIFinderSync {
             submenu.addItem(menuItem(title: "新建 txt 文件", selector: #selector(actionCreateTxtFile(_:))))
         }
 
-        // 8. 在新窗口打开（必须右键文件夹图标，右键空白区域不显示）—— 走 IPC
+        // 7. 在新窗口打开（必须右键文件夹图标，右键空白区域不显示）—— 走 IPC
         // menuKind == .contextualMenuForItems 确保是右键选中项而非空白区域
         if menuKind == .contextualMenuForItems && allSelectedAreFolders {
             submenu.addItem(menuItem(title: "在新窗口打开", selector: #selector(actionOpenInNewFinderWindow(_:))))
@@ -133,7 +133,7 @@ class FinderSync: FIFinderSync {
 
     // MARK: - 动作分发
     //
-    // 走 IPC 的动作（受 sandbox 限制）：1/5/6/8
+    // 走 IPC 的动作（受 sandbox 限制）：1/5/6/7
     // 扩展内直接执行的动作（sandbox 允许）：2/3/4
 
     @objc private func actionOpenInTerminal(_ sender: AnyObject?) {

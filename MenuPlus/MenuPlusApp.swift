@@ -21,6 +21,13 @@ struct MenuPlusApp: App {
         }
         // 注：MenuBarExtra Scene 不支持 .onOpenURL，
         // URL 处理放在 AppDelegate 的 application(_:open:) 中。
+
+        Window("MenuPlus 设置", id: "settings") {
+            ContentView()
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentSize)
+        .defaultSize(width: 400, height: 320)
     }
 }
 
