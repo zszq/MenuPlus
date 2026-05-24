@@ -142,10 +142,14 @@ Finder 空白区域的“新建文件 / 新建 txt 文件”以及“在终端�
 - 使用 `URL.bookmarkData(options: [.withSecurityScope], ...)` 生成 bookmark
 - 使用主 App 沙盒内的 `UserDefaults.standard` 持久化 `[String: Data]`
 - key 必须是标准化后的绝对路径（`standardizedFileURL.path`）
+- 执行目录动作时，必须优先查找“最长前缀匹配”的已授权目录；父目录 bookmark 可覆盖其全部子目录
 - 每次执行前先尝试 `URL(resolvingBookmarkData:options:[.withSecurityScope], ...)`
 - `startAccessingSecurityScopedResource()` 返回 `false` 时，视为缓存失效，删除旧 bookmark 并重新请求授权
+- 设置页允许用户预先添加多个常用目录；这些目录与运行时弹窗授权得到的 bookmark 使用同一份存储与复用逻辑
 
 > **Warning**: 如果 bookmark 已经创建，但主 App 仍然每次都弹 `NSOpenPanel`，先检查是不是“新二进制已覆盖 /Applications，但旧 MenuPlus 进程还没退出”。Finder 扩展通过 URL Scheme 唤起时，LaunchServices 可能继续把 IPC 发给旧进程，导致你误以为新代码未生效。
+
+> **Warning**: 不要只按“目标目录全路径完全相等”查 bookmark。正确行为是：先命中最近的祖先授权目录，再在该 security scope 下拼出目标子目录 URL。
 
 ---
 
@@ -200,17 +204,21 @@ FIFinderSyncController.showExtensionManagementInterface()
 - `selectedItemURLs().isEmpty && menuKind == .contextualMenuForContainer` → 允许“在终端打开 / 在 VSCode 中打开 / 复制路径 / 新建文件 / 新建 txt 文件”等动作，但“新建*”必须通过 IPC 交给主 App 授权后执行。
 - `selectedItemURLs()` 非空且全部为文件夹 → 可显示“新建文件 / 新建 txt 文件 / 在新窗口打开”；其中“新建*”可由扩展直接创建。
 - 混合选择文件 + 文件夹 → 不显示仅目录动作。
+- 已授权 `/A`，当前目标是 `/A/B/C` → 主 App 必须直接复用 `/A` 的 bookmark，不再弹授权面板。
 - 用户在主 App 授权面板点取消 → 不创建文件，并给出“下次再次执行会重新弹出授权面板”的提示。
 - 用户在授权面板选错目录 → 不创建文件，并明确要求选择当前 Finder 目录本身。
 
 #### 5. Good / Base / Bad Cases
 - Good: 右键空白区域，显示“新建文件 / 新建 txt 文件”，点击后主 App 弹目录授权面板，授权成功后创建文件。
+- Good: 在设置页预先授权 `/Projects` 后，右键 `/Projects/Foo/Bar` 空白区域执行“新建文件”，应直接成功且不再弹授权面板。
 - Base: 右键单个文件夹，扩展直接创建“新建文件 / 新建 txt 文件”，无需额外弹窗。
 - Bad: 空白区域沿用扩展内 `FileManager.createFile` 直接写，结果因缺少写权限失败。
 
 #### 6. Tests Required
 - 右键文件夹图标：应显示“新建文件 / 新建 txt 文件 / 在新窗口打开”。
 - 右键 Finder 空白区域：应显示“新建文件 / 新建 txt 文件”，且首次点击会出现目录授权面板。
+- 先授权父目录，再操作任意子目录：不应再次出现授权面板。
+- 设置页添加授权目录后，重新打开设置页：授权列表应持久化显示。
 - 选中文件后右键：不应显示目录专属动作。
 - 在授权面板点取消：不创建文件，并只出现一次失败提示。
 

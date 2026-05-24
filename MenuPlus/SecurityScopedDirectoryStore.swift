@@ -1,6 +1,11 @@
 import AppKit
 
 enum SecurityScopedDirectoryStore {
+    private struct ResolvedBookmarkMatch {
+        let bookmarkPath: String
+        let bookmarkedURL: URL
+    }
+
     private enum AccessError: LocalizedError {
         case cancelled(actionName: String)
         case wrongDirectory(expectedPath: String)
@@ -31,13 +36,19 @@ enum SecurityScopedDirectoryStore {
         let standardizedDirectoryPath = standardizedPath(for: directoryPath)
 
         do {
-            if let bookmarkedURL = try resolveBookmark(for: standardizedDirectoryPath),
-               try performWithSecurityScope(for: bookmarkedURL, originalPath: standardizedDirectoryPath, perform: perform) {
+            if let bookmarkMatch = try resolveBestBookmark(for: standardizedDirectoryPath),
+               try performWithSecurityScope(
+                using: bookmarkMatch,
+                targetPath: standardizedDirectoryPath,
+                perform: perform
+               ) {
                 return
             }
-        } catch {
-            NSLog("[MenuPlus/MainApp] 读取 bookmark 失败，准备回退到重新授权：%@, error=%@", standardizedDirectoryPath, error.localizedDescription)
+        } catch AccessError.bookmarkStoreCorrupted {
+            NSLog("[MenuPlus/MainApp] bookmark store 损坏，准备清空后重新授权")
             try resetBookmarkStore()
+        } catch {
+            NSLog("[MenuPlus/MainApp] 复用 bookmark 失败，准备回退到重新授权：%@, error=%@", standardizedDirectoryPath, error.localizedDescription)
         }
 
         NSLog("[MenuPlus/MainApp] 未命中可用 bookmark，准备请求目录授权：%@", standardizedDirectoryPath)
@@ -45,23 +56,57 @@ enum SecurityScopedDirectoryStore {
         try saveBookmark(for: grantedURL)
 
         guard try performWithSecurityScope(
-            for: grantedURL,
-            originalPath: standardizedDirectoryPath,
+            using: ResolvedBookmarkMatch(
+                bookmarkPath: standardizedPath(for: grantedURL.path),
+                bookmarkedURL: grantedURL
+            ),
+            targetPath: standardizedDirectoryPath,
             perform: perform
         ) else {
             throw AccessError.securityScopeActivationFailed(path: standardizedDirectoryPath)
         }
     }
 
+    static func authorizedDirectoryPaths() throws -> [String] {
+        Array(try bookmarkStore().keys).sorted()
+    }
+
+    @discardableResult
+    static func authorizeDirectoriesFromSettings() throws -> Bool {
+        let selectedURLs = requestDirectoriesForSettings()
+        guard !selectedURLs.isEmpty else {
+            return false
+        }
+
+        for url in selectedURLs {
+            try saveBookmark(for: url)
+        }
+
+        return true
+    }
+
+    static func removeAuthorizedDirectories(_ directoryPaths: [String]) throws {
+        guard !directoryPaths.isEmpty else {
+            return
+        }
+
+        var store = try bookmarkStore()
+        for directoryPath in directoryPaths {
+            store.removeValue(forKey: standardizedPath(for: directoryPath))
+        }
+        try persistBookmarkStore(store)
+    }
+
     private static func performWithSecurityScope(
-        for directoryURL: URL,
-        originalPath: String,
+        using bookmarkMatch: ResolvedBookmarkMatch,
+        targetPath: String,
         perform: (URL) throws -> Void
     ) throws -> Bool {
+        let directoryURL = bookmarkMatch.bookmarkedURL
         let started = directoryURL.startAccessingSecurityScopedResource()
         guard started else {
             NSLog("[MenuPlus/MainApp] startAccessingSecurityScopedResource 失败：%@", directoryURL.path)
-            removeBookmark(for: originalPath)
+            removeBookmark(for: bookmarkMatch.bookmarkPath)
             return false
         }
 
@@ -69,37 +114,63 @@ enum SecurityScopedDirectoryStore {
             directoryURL.stopAccessingSecurityScopedResource()
         }
 
-        try perform(directoryURL)
+        try perform(scopedURL(for: targetPath, using: bookmarkMatch))
         return true
     }
 
-    private static func resolveBookmark(for standardizedDirectoryPath: String) throws -> URL? {
+    private static func resolveBestBookmark(for standardizedDirectoryPath: String) throws -> ResolvedBookmarkMatch? {
         let store = try bookmarkStore()
-        guard let bookmark = store[standardizedDirectoryPath] else {
-            NSLog("[MenuPlus/MainApp] 未找到 bookmark：%@", standardizedDirectoryPath)
+        let matchingPaths = store.keys
+            .filter { bookmarkPath in
+                standardizedDirectoryPath == bookmarkPath
+                    || standardizedDirectoryPath.hasPrefix(bookmarkPath + "/")
+            }
+            .sorted { $0.count > $1.count }
+
+        guard !matchingPaths.isEmpty else {
+            NSLog("[MenuPlus/MainApp] 未找到可复用 bookmark：%@", standardizedDirectoryPath)
             return nil
         }
 
+        for bookmarkPath in matchingPaths {
+            guard let bookmark = store[bookmarkPath] else {
+                continue
+            }
+
+            guard let url = try resolveBookmark(for: bookmarkPath, bookmarkData: bookmark) else {
+                continue
+            }
+
+            NSLog(
+                "[MenuPlus/MainApp] 已复用 bookmark：target=%@, bookmark=%@",
+                standardizedDirectoryPath,
+                bookmarkPath
+            )
+            return ResolvedBookmarkMatch(bookmarkPath: bookmarkPath, bookmarkedURL: url)
+        }
+
+        return nil
+    }
+
+    private static func resolveBookmark(for bookmarkPath: String, bookmarkData: Data) throws -> URL? {
         var isStale = false
         do {
             let url = try URL(
-                resolvingBookmarkData: bookmark,
+                resolvingBookmarkData: bookmarkData,
                 options: [.withSecurityScope],
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             )
 
             if isStale {
-                NSLog("[MenuPlus/MainApp] bookmark 已过期，准备刷新：%@", standardizedDirectoryPath)
+                NSLog("[MenuPlus/MainApp] bookmark 已过期，准备刷新：%@", bookmarkPath)
                 try saveBookmark(for: url)
-            } else {
-                NSLog("[MenuPlus/MainApp] 已复用 bookmark：%@", standardizedDirectoryPath)
             }
 
             return url
         } catch {
-            NSLog("[MenuPlus/MainApp] 解析 bookmark 失败：%@, error=%@", standardizedDirectoryPath, error.localizedDescription)
-            removeBookmark(for: standardizedDirectoryPath)
+            NSLog("[MenuPlus/MainApp] 解析 bookmark 失败：%@, error=%@", bookmarkPath, error.localizedDescription)
+            removeBookmark(for: bookmarkPath)
             return nil
         }
     }
@@ -142,6 +213,38 @@ enum SecurityScopedDirectoryStore {
         }
 
         return selectedURL
+    }
+
+    private static func requestDirectoriesForSettings() -> [URL] {
+        if Thread.isMainThread {
+            return requestDirectoriesForSettingsOnMain()
+        }
+
+        return DispatchQueue.main.sync {
+            requestDirectoriesForSettingsOnMain()
+        }
+    }
+
+    private static func requestDirectoriesForSettingsOnMain() -> [URL] {
+        NSApp.activate(ignoringOtherApps: true)
+
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.canCreateDirectories = false
+        panel.message = """
+        选择要预授权的目录。
+
+        已授权目录下的所有子目录都会自动复用，无需再次授权。
+        """
+        panel.prompt = "添加授权目录"
+
+        guard panel.runModal() == .OK else {
+            return []
+        }
+
+        return panel.urls
     }
 
     private static func saveBookmark(for url: URL) throws {
@@ -209,5 +312,19 @@ enum SecurityScopedDirectoryStore {
 
     private static func standardizedPath(for path: String) -> String {
         URL(fileURLWithPath: path).standardizedFileURL.path
+    }
+
+    private static func scopedURL(for targetPath: String, using bookmarkMatch: ResolvedBookmarkMatch) -> URL {
+        guard targetPath != bookmarkMatch.bookmarkPath else {
+            return bookmarkMatch.bookmarkedURL
+        }
+
+        let targetComponents = URL(fileURLWithPath: targetPath).standardizedFileURL.pathComponents
+        let bookmarkComponents = URL(fileURLWithPath: bookmarkMatch.bookmarkPath).standardizedFileURL.pathComponents
+        let relativeComponents = targetComponents.dropFirst(bookmarkComponents.count)
+
+        return relativeComponents.reduce(bookmarkMatch.bookmarkedURL) { partialURL, component in
+            partialURL.appendingPathComponent(component, isDirectory: true)
+        }
     }
 }

@@ -16,6 +16,7 @@ struct ContentView: View {
         if #available(macOS 13, *) { return SMAppService.mainApp.status == .enabled }
         return false
     }()
+    @State private var selectedAuthorizedDirectories = Set<String>()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -97,6 +98,50 @@ struct ContentView: View {
                 .padding(8)
             }
 
+            GroupBox("目录授权") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("现在支持按父目录复用授权：例如先授权 `/Projects`，那么 `/Projects/AppA`、`/Projects/AppB/Subdir` 都不会再次弹出授权。")
+                        .foregroundColor(.secondary)
+                    Text("你也可以在这里提前添加常用目录；这些目录及其所有子目录都会直接复用授权。")
+                        .foregroundColor(.secondary)
+
+                    HStack {
+                        Button("添加授权目录…") {
+                            runtime.authorizeDirectoriesFromSettings()
+                        }
+                        Button("移除所选授权") {
+                            runtime.removeAuthorizedDirectories(Array(selectedAuthorizedDirectories))
+                            selectedAuthorizedDirectories.removeAll()
+                        }
+                        .disabled(selectedAuthorizedDirectories.isEmpty)
+
+                        Button("刷新列表") {
+                            runtime.refreshAuthorizedDirectories()
+                        }
+                    }
+
+                    if runtime.authorizedDirectoryPaths.isEmpty {
+                        Text("暂未保存任何目录授权。")
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 8)
+                    } else {
+                        List(runtime.authorizedDirectoryPaths, id: \.self, selection: $selectedAuthorizedDirectories) { path in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(path)
+                                    .textSelection(.enabled)
+                                Text("该目录下的所有子目录都会复用这次授权")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                        .frame(minHeight: 150)
+                    }
+                }
+                .padding(8)
+            }
+
             GroupBox("通用") {
                 Toggle("开机启动", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { newValue in
@@ -115,9 +160,12 @@ struct ContentView: View {
             Spacer()
         }
         .padding(24)
-        .frame(minWidth: 440, minHeight: 380)
+        .frame(minWidth: 520, minHeight: 560)
         .onAppear {
             runtime.refreshStatus()
+        }
+        .onChange(of: runtime.authorizedDirectoryPaths) { newPaths in
+            selectedAuthorizedDirectories.formIntersection(Set(newPaths))
         }
     }
 

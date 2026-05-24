@@ -16,6 +16,7 @@ final class AppRuntime: ObservableObject {
     @Published private(set) var isFinderExtensionEnabled = FIFinderSyncController.isExtensionEnabled
     @Published private(set) var notificationStatus: UNAuthorizationStatus = .notDetermined
     @Published private(set) var bundleInstallState: BundleInstallState = .other
+    @Published private(set) var authorizedDirectoryPaths: [String] = []
 
     private var hasPresentedDisabledExtensionAlertThisLaunch = false
     private var hasPresentedBundleLocationAlertThisLaunch = false
@@ -25,6 +26,7 @@ final class AppRuntime: ObservableObject {
     func refreshStatus() {
         isFinderExtensionEnabled = FIFinderSyncController.isExtensionEnabled
         bundleInstallState = detectBundleInstallState()
+        refreshAuthorizedDirectories()
 
         Task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
@@ -169,6 +171,35 @@ final class AppRuntime: ObservableObject {
 
     func openApplicationsFolder() {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications", isDirectory: true))
+    }
+
+    func refreshAuthorizedDirectories() {
+        do {
+            authorizedDirectoryPaths = try SecurityScopedDirectoryStore.authorizedDirectoryPaths()
+        } catch {
+            NSLog("[MenuPlus/MainApp] 加载已授权目录失败: %@", error.localizedDescription)
+            authorizedDirectoryPaths = []
+        }
+    }
+
+    func authorizeDirectoriesFromSettings() {
+        do {
+            let changed = try SecurityScopedDirectoryStore.authorizeDirectoriesFromSettings()
+            if changed {
+                refreshAuthorizedDirectories()
+            }
+        } catch {
+            FailurePresenter.present(action: "添加授权目录", reason: error.localizedDescription)
+        }
+    }
+
+    func removeAuthorizedDirectories(_ directoryPaths: [String]) {
+        do {
+            try SecurityScopedDirectoryStore.removeAuthorizedDirectories(directoryPaths)
+            refreshAuthorizedDirectories()
+        } catch {
+            FailurePresenter.present(action: "移除授权目录", reason: error.localizedDescription)
+        }
     }
 }
 
