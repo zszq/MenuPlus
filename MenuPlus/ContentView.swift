@@ -125,14 +125,9 @@ struct ContentView: View {
                                     .padding(.vertical, 8)
                             } else {
                                 List(runtime.authorizedDirectoryPaths, id: \.self, selection: $selectedAuthorizedDirectories) { path in
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(path)
-                                            .textSelection(.enabled)
-                                        Text("该目录下的所有子目录都会复用这次授权")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.vertical, 2)
+                                    Text(path)
+                                        .textSelection(.enabled)
+                                        .padding(.vertical, 2)
                                 }
                                 .frame(minHeight: 320)
                             }
