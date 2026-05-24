@@ -15,8 +15,6 @@ import Foundation
 
 enum IPCAction: String, Codable {
     case openInTerminal
-    case createBlankFile
-    case createTxtFile
     case openInNewFinderWindow
     // 未来可扩展（如 toggleHiddenFiles 等）
 }

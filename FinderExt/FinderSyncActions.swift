@@ -50,4 +50,24 @@ enum FinderSyncActions {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(string, forType: .string)
     }
+
+    // MARK: - 动作 5 / 6：在扩展内创建文件
+
+    /// 在指定目录创建空白文件。冲突时自动加数字后缀（例如"新建文件 2"）。
+    /// FinderExt 持有 com.apple.security.files.user-selected.read-write entitlement，
+    /// 对用户右键选中的文件夹拥有写权限，无需走 IPC。
+    static func createFile(inDirectory dir: String, baseName: String, extension ext: String?) {
+        let dirURL = URL(fileURLWithPath: dir)
+        let suffix = ext.map { ".\($0)" } ?? ""
+        var name = "\(baseName)\(suffix)"
+        var idx = 2
+        while FileManager.default.fileExists(atPath: dirURL.appendingPathComponent(name).path) {
+            name = "\(baseName) \(idx)\(suffix)"
+            idx += 1
+        }
+        let fileURL = dirURL.appendingPathComponent(name)
+        if !FileManager.default.createFile(atPath: fileURL.path, contents: nil) {
+            NSLog("[MenuPlus/FinderExt] 新建文件失败：无法在 %@ 创建 %@", dir, name)
+        }
+    }
 }

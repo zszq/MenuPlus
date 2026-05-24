@@ -2,9 +2,10 @@
 //  IPCExecutor.swift
 //  MenuPlus
 //
-//  主 App 端 IPC 动作执行器（无 sandbox 环境）。
-//  扩展进程因 sandbox 拒绝的写操作（创建文件、唤起外部进程等），
-//  都通过 rightmenu:// URL 转交给这里执行。
+//  主 App 端 IPC 动作执行器。
+//  需要在主 App 进程执行的动作（如控制 Terminal、控制 Finder AppleScript）
+//  通过 rightmenu:// URL 转交给这里执行。
+//  文件创建操作已移至 FinderExt/FinderSyncActions，由扩展进程直接执行。
 //
 
 import AppKit
@@ -18,18 +19,6 @@ enum IPCExecutor {
                 return notifyFail("在终端打开", "缺少目标路径")
             }
             openInTerminal(path: path)
-
-        case .createBlankFile:
-            guard let dir = request.paths.first else {
-                return notifyFail("新建文件", "缺少目录")
-            }
-            createFile(inDirectory: dir, baseName: "新建文件", extension: nil)
-
-        case .createTxtFile:
-            guard let dir = request.paths.first else {
-                return notifyFail("新建 txt", "缺少目录")
-            }
-            createFile(inDirectory: dir, baseName: "新建文件", extension: "txt")
 
         case .openInNewFinderWindow:
             guard let path = request.paths.first else {
@@ -65,22 +54,6 @@ enum IPCExecutor {
             if let error = error {
                 notifyFail("在终端打开", error.localizedDescription)
             }
-        }
-    }
-
-    /// 在指定目录创建空白文件。冲突时自动加数字后缀。
-    private static func createFile(inDirectory dir: String, baseName: String, extension ext: String?) {
-        let dirURL = URL(fileURLWithPath: dir)
-        let suffix = ext.map { ".\($0)" } ?? ""
-        var name = "\(baseName)\(suffix)"
-        var idx = 2
-        while FileManager.default.fileExists(atPath: dirURL.appendingPathComponent(name).path) {
-            name = "\(baseName) \(idx)\(suffix)"
-            idx += 1
-        }
-        let fileURL = dirURL.appendingPathComponent(name)
-        if !FileManager.default.createFile(atPath: fileURL.path, contents: nil) {
-            notifyFail("新建文件", "无法在 \(dir) 创建 \(name)")
         }
     }
 

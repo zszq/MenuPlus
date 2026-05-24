@@ -162,13 +162,13 @@ class FinderSync: FIFinderSync {
 
     @objc private func actionCreateBlankFile(_ sender: AnyObject?) {
         for url in selectedTargets() where url.hasDirectoryPath {
-            IPCClient.send(IPCRequest(action: .createBlankFile, paths: [url.path]))
+            FinderSyncActions.createFile(inDirectory: url.path, baseName: "新建文件", extension: nil)
         }
     }
 
     @objc private func actionCreateTxtFile(_ sender: AnyObject?) {
         for url in selectedTargets() where url.hasDirectoryPath {
-            IPCClient.send(IPCRequest(action: .createTxtFile, paths: [url.path]))
+            FinderSyncActions.createFile(inDirectory: url.path, baseName: "新建文件", extension: "txt")
         }
     }
 
