@@ -59,12 +59,12 @@ struct ContentView: View {
                                     title: "通知权限",
                                     value: notificationStatusText(runtime.notificationStatus),
                                     color: notificationStatusColor(runtime.notificationStatus),
-                                    buttonTitle: runtime.notificationStatus == .authorized ? "打开通知设置" : "授权通知…"
+                                    buttonTitle: notificationButtonTitle(runtime.notificationStatus)
                                 ) {
-                                    if runtime.notificationStatus == .authorized {
-                                        SystemSettingsNavigator.openNotificationsPrivacy()
-                                    } else {
+                                    if runtime.notificationStatus == .notDetermined {
                                         runtime.requestNotificationAuthorization()
+                                    } else {
+                                        SystemSettingsNavigator.openNotificationsPrivacy()
                                     }
                                 }
 
@@ -204,6 +204,15 @@ struct ContentView: View {
             return .red
         @unknown default:
             return .gray
+        }
+    }
+
+    private func notificationButtonTitle(_ status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined:
+            return "授权通知…"
+        default:
+            return "打开通知设置"
         }
     }
 }

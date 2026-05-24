@@ -43,6 +43,9 @@ final class AppRuntime: ObservableObject {
             }
             Task { @MainActor in
                 self.refreshStatus()
+                if error != nil {
+                    SystemSettingsNavigator.openNotificationsPrivacy()
+                }
             }
         }
     }
