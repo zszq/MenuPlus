@@ -29,6 +29,8 @@ struct ContentView: View {
             TabView(selection: $selectedTab) {
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 20) {
+                        settingsHeader()
+
                         GroupBox("通用") {
                             VStack(alignment: .leading, spacing: 12) {
                                 launchAtLoginRow()
@@ -141,6 +143,26 @@ struct ContentView: View {
         }
         .onChange(of: runtime.authorizedDirectoryPaths) { newPaths in
             selectedAuthorizedDirectories.formIntersection(Set(newPaths))
+        }
+    }
+
+    private func settingsHeader() -> some View {
+        HStack(spacing: 16) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .renderingMode(.original)
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .shadow(color: Color.black.opacity(0.16), radius: 8, y: 3)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("MenuPlus")
+                    .font(.title2.bold())
+                Text("版本 \(Bundle.main.shortVersion)")
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
         }
     }
 
