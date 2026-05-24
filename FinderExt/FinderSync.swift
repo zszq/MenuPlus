@@ -94,7 +94,6 @@ class FinderSync: FIFinderSync {
         }
 
         if !context.selectedCreatableFolders.isEmpty {
-            addSeparatorIfNeeded(to: menu)
             menu.addItem(menuItem(
                 title: "新建文件",
                 selector: #selector(actionCreateBlankFile(_:)),
@@ -106,7 +105,6 @@ class FinderSync: FIFinderSync {
                 tag: CreateFileMode.directSelection.rawValue
             ))
         } else if context.containerCreatableTarget != nil {
-            addSeparatorIfNeeded(to: menu)
             menu.addItem(menuItem(
                 title: "新建文件",
                 selector: #selector(actionCreateBlankFile(_:)),
@@ -120,7 +118,6 @@ class FinderSync: FIFinderSync {
         }
 
         if !context.newWindowTargets.isEmpty {
-            addSeparatorIfNeeded(to: menu)
             menu.addItem(menuItem(
                 title: "在新窗口打开",
                 selector: #selector(actionOpenInNewFinderWindow(_:))
