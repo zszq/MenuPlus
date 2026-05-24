@@ -18,13 +18,6 @@
 			remoteGlobalIDString = 781F9DA52FC18FA700DF3CFC;
 			remoteInfo = FinderExt;
 		};
-		781F9DB62FC193AF00DF3CFC /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 78AC02862FB23B0900E4789A /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 781F9DA52FC18FA700DF3CFC;
-			remoteInfo = FinderExt;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -164,7 +157,6 @@
 			);
 			dependencies = (
 				781F9DAC2FC18FA700DF3CFC /* PBXTargetDependency */,
-				781F9DB72FC193AF00DF3CFC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				78AC02902FB23B0900E4789A /* MenuPlus */,
@@ -255,11 +247,6 @@
 			target = 781F9DA52FC18FA700DF3CFC /* FinderExt */;
 			targetProxy = 781F9DAB2FC18FA700DF3CFC /* PBXContainerItemProxy */;
 		};
-		781F9DB72FC193AF00DF3CFC /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 781F9DA52FC18FA700DF3CFC /* FinderExt */;
-			targetProxy = 781F9DB62FC193AF00DF3CFC /* PBXContainerItemProxy */;
-		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -284,6 +271,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = zl.MenuPlus.FinderExt;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -314,6 +302,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = zl.MenuPlus.FinderExt;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -450,7 +439,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -483,7 +472,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = NO;

@@ -2,38 +2,27 @@
 //  FinderSync.swift
 //  FinderExt
 //
-//  Finder Sync Extension 入口：注册全盘监控，提供 MenuPlus 子菜单。
+//  Finder Sync Extension 入口：注册全盘监控，直接在 Finder 右键菜单里输出可用动作。
 //
 
 import Cocoa
 import FinderSync
 
 class FinderSync: FIFinderSync {
+    private let controller = FIFinderSyncController.default()
 
     override init() {
         super.init()
 
         NSLog("MenuPlus FinderSync 已加载，bundle: %@", Bundle.main.bundlePath as NSString)
 
-        // 监控全盘，使右键菜单在任意路径都可用
-        FIFinderSyncController.default().directoryURLs = [URL(fileURLWithPath: "/")]
+        // 监控全盘，使右键菜单在任意路径都可用。
+        controller.directoryURLs = [URL(fileURLWithPath: "/")]
     }
 
-    // MARK: - 基础观察方法（保留日志，便于真机调试）
-
-    override func beginObservingDirectory(at url: URL) {
-        // 用户开始查看某个目录时触发，无需特殊处理
-    }
-
-    override func endObservingDirectory(at url: URL) {
-        // 用户离开目录时触发
-    }
-
-    override func requestBadgeIdentifier(for url: URL) {
-        // 当前 MVP 不需要 badge
-    }
-
-    // MARK: - 工具栏项（保留兜底，未在主流程使用）
+    override func beginObservingDirectory(at url: URL) {}
+    override func endObservingDirectory(at url: URL) {}
+    override func requestBadgeIdentifier(for url: URL) {}
 
     override var toolbarItemName: String { "MenuPlus" }
     override var toolbarItemToolTip: String { "MenuPlus 右键菜单扩展" }
@@ -42,139 +31,145 @@ class FinderSync: FIFinderSync {
             ?? NSImage(named: NSImage.actionTemplateName)!
     }
 
-    // MARK: - 主菜单构建
+    override func menu(for menuKind: FIMenuKind) -> NSMenu? {
+        let menu = NSMenu(title: "")
 
-    override func menu(for menuKind: FIMenuKind) -> NSMenu {
-        // 顶层菜单只放一个 "MenuPlus" 项，子菜单挂载具体动作
-        let topMenu = NSMenu(title: "")
-        let parentItem = NSMenuItem(title: "MenuPlus", action: nil, keyEquivalent: "")
-        parentItem.submenu = buildSubmenu(menuKind: menuKind)
-        topMenu.addItem(parentItem)
-
-        // 顶层"在终端打开"：仅对文件夹显示，无子菜单
-        if menuKind != .contextualMenuForSidebar {
-            let targets = selectedTargets()
-            let allFolders = !targets.isEmpty && targets.allSatisfy {
-                $0.hasDirectoryPath && !NSWorkspace.shared.isFilePackage(atPath: $0.path)
-            }
-            if allFolders {
-                let termItem = NSMenuItem(title: "在终端打开", action: #selector(actionOpenInTerminal(_:)), keyEquivalent: "")
-                termItem.target = self
-                topMenu.addItem(termItem)
-            }
+        let terminalTargets = terminalTargets(for: menuKind)
+        if !terminalTargets.isEmpty {
+            menu.addItem(menuItem(title: "在终端中打开", selector: #selector(actionOpenInTerminal(_:))))
         }
 
-        return topMenu
+        let vscodeTargets = generalTargets(for: menuKind)
+        if !vscodeTargets.isEmpty {
+            menu.addItem(menuItem(title: "在 VSCode 中打开", selector: #selector(actionOpenInVSCode(_:))))
+            menu.addItem(menuItem(title: "复制路径", selector: #selector(actionCopyFullPath(_:))))
+            menu.addItem(menuItem(title: "复制文件(夹)名", selector: #selector(actionCopyFileName(_:))))
+        }
+
+        let creatableFolders = creatableFolderTargets()
+        if !creatableFolders.isEmpty {
+            addSeparatorIfNeeded(to: menu)
+            menu.addItem(menuItem(title: "新建空白文件", selector: #selector(actionCreateBlankFile(_:))))
+            menu.addItem(menuItem(title: "新建 txt 文件", selector: #selector(actionCreateTxtFile(_:))))
+        }
+
+        let newWindowFolders = newWindowTargets(for: menuKind)
+        if !newWindowFolders.isEmpty {
+            addSeparatorIfNeeded(to: menu)
+            menu.addItem(menuItem(title: "在新窗口打开", selector: #selector(actionOpenInNewFinderWindow(_:))))
+        }
+
+        return menu.items.isEmpty ? nil : menu
     }
 
-    /// 构建 MenuPlus 子菜单。按选中目标的类型（文件 / 文件夹）过滤可用动作。
-    private func buildSubmenu(menuKind: FIMenuKind) -> NSMenu {
-        let submenu = NSMenu(title: "MenuPlus")
-
-        let targets = selectedTargets()
-
-        // 用户是否明确右键选中了「全部都是文件夹」的若干项
-        // （区别于右键空白区域：空白区域只有 targetedURL，没有 selectedItemURLs）
-        let allSelectedAreFolders = !targets.isEmpty && targets.allSatisfy {
-            $0.hasDirectoryPath && !NSWorkspace.shared.isFilePackage(atPath: $0.path)
-        }
-
-        // 1. 在终端中打开（选中文件夹或右键空白区域时显示）—— 走 IPC 由主 App 执行
-        if menuKind != .contextualMenuForSidebar && allSelectedAreFolders {
-            submenu.addItem(menuItem(title: "在终端中打开", selector: #selector(actionOpenInTerminal(_:))))
-        }
-
-        // 2. 在 VSCode 中打开（文件 + 文件夹皆可）—— 扩展内执行（vscode:// 走 LaunchServices 同源不受限）
-        submenu.addItem(menuItem(title: "在 VSCode 中打开", selector: #selector(actionOpenInVSCode(_:))))
-
-        // 3. 复制完整路径 —— 扩展内执行（Pasteboard 在扩展内可用）
-        submenu.addItem(menuItem(title: "复制路径", selector: #selector(actionCopyFullPath(_:))))
-
-        // 4. 复制文件(夹)名 —— 扩展内执行
-        submenu.addItem(menuItem(title: "复制文件(夹)名", selector: #selector(actionCopyFileName(_:))))
-
-        // 5. 新建空白文件 —— 文件夹时显示 —— 走 IPC
-        if menuKind != .contextualMenuForSidebar && allSelectedAreFolders {
-            submenu.addItem(menuItem(title: "新建空白文件", selector: #selector(actionCreateBlankFile(_:))))
-        }
-
-        // 6. 新建 txt 文件 —— 文件夹时显示 —— 走 IPC
-        if menuKind != .contextualMenuForSidebar && allSelectedAreFolders {
-            submenu.addItem(menuItem(title: "新建 txt 文件", selector: #selector(actionCreateTxtFile(_:))))
-        }
-
-        // 7. 在新窗口打开（必须右键文件夹图标，右键空白区域不显示）—— 走 IPC
-        // menuKind == .contextualMenuForItems 确保是右键选中项而非空白区域
-        if menuKind == .contextualMenuForItems && allSelectedAreFolders {
-            submenu.addItem(menuItem(title: "在新窗口打开", selector: #selector(actionOpenInNewFinderWindow(_:))))
-        }
-
-        return submenu
-    }
-
-    /// 统一构造一个 target=self 的 NSMenuItem。
     private func menuItem(title: String, selector: Selector) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
         item.target = self
         return item
     }
 
-    /// 获取当前右键选中的目标 URL 列表。
-    /// 优先使用 selectedItemURLs；若为空（例如右键空白区域），回退到 targetedURL。
-    private func selectedTargets() -> [URL] {
-        if let selected = FIFinderSyncController.default().selectedItemURLs(), !selected.isEmpty {
-            return selected
-        }
-        if let target = FIFinderSyncController.default().targetedURL() {
-            return [target]
-        }
-        return []
+    private func addSeparatorIfNeeded(to menu: NSMenu) {
+        guard !menu.items.isEmpty, menu.items.last?.isSeparatorItem == false else { return }
+        menu.addItem(.separator())
     }
 
-    // MARK: - 动作分发
-    //
-    // 走 IPC 的动作（受 sandbox 限制）：1/5/6/7
-    // 扩展内直接执行的动作（sandbox 允许）：2/3/4
+    private func selectedItems() -> [URL] {
+        controller.selectedItemURLs() ?? []
+    }
+
+    private func targetedURL() -> URL? {
+        controller.targetedURL()
+    }
+
+    private func isActionableFolder(_ url: URL) -> Bool {
+        url.hasDirectoryPath && !NSWorkspace.shared.isFilePackage(atPath: url.path)
+    }
+
+    private func selectedFolders() -> [URL] {
+        selectedItems().filter(isActionableFolder)
+    }
+
+    private func allSelectedItemsAreFolders() -> Bool {
+        let selected = selectedItems()
+        return !selected.isEmpty && selected.allSatisfy(isActionableFolder)
+    }
+
+    private func generalTargets(for menuKind: FIMenuKind) -> [URL] {
+        let selected = selectedItems()
+        if !selected.isEmpty {
+            return selected
+        }
+
+        guard menuKind == .contextualMenuForContainer || menuKind == .contextualMenuForSidebar,
+              let target = targetedURL() else {
+            return []
+        }
+        return [target]
+    }
+
+    private func terminalTargets(for menuKind: FIMenuKind) -> [URL] {
+        if allSelectedItemsAreFolders() {
+            return selectedFolders()
+        }
+
+        guard menuKind == .contextualMenuForContainer || menuKind == .contextualMenuForSidebar,
+              let target = targetedURL(),
+              isActionableFolder(target) else {
+            return []
+        }
+        return [target]
+    }
+
+    /// 仅允许“明确选中的文件夹”显示新建文件，避免右键空白区域时拿不到写权限。
+    private func creatableFolderTargets() -> [URL] {
+        guard allSelectedItemsAreFolders() else { return [] }
+        return selectedFolders()
+    }
+
+    private func newWindowTargets(for menuKind: FIMenuKind) -> [URL] {
+        guard menuKind == .contextualMenuForItems, allSelectedItemsAreFolders() else { return [] }
+        return selectedFolders()
+    }
 
     @objc private func actionOpenInTerminal(_ sender: AnyObject?) {
-        for url in selectedTargets() where url.hasDirectoryPath {
-            IPCClient.send(IPCRequest(action: .openInTerminal, paths: [url.path]))
-        }
+        let paths = terminalTargets(for: .contextualMenuForContainer).map(\.path)
+        guard !paths.isEmpty else { return }
+        IPCClient.send(IPCRequest(action: .openInTerminal, paths: paths))
     }
 
     @objc private func actionOpenInVSCode(_ sender: AnyObject?) {
-        for url in selectedTargets() {
+        for url in generalTargets(for: .contextualMenuForContainer) {
             FinderSyncActions.openInVSCode(url: url)
         }
     }
 
     @objc private func actionCopyFullPath(_ sender: AnyObject?) {
-        let paths = selectedTargets().map { $0.path }
+        let paths = generalTargets(for: .contextualMenuForContainer).map(\.path)
         guard !paths.isEmpty else { return }
         FinderSyncActions.copyToClipboard(paths.joined(separator: "\n"))
     }
 
     @objc private func actionCopyFileName(_ sender: AnyObject?) {
-        let names = selectedTargets().map { $0.lastPathComponent }
+        let names = generalTargets(for: .contextualMenuForContainer).map(\.lastPathComponent)
         guard !names.isEmpty else { return }
         FinderSyncActions.copyToClipboard(names.joined(separator: "\n"))
     }
 
     @objc private func actionCreateBlankFile(_ sender: AnyObject?) {
-        for url in selectedTargets() where url.hasDirectoryPath {
+        for url in creatableFolderTargets() {
             FinderSyncActions.createFile(inDirectory: url.path, baseName: "新建文件", extension: nil)
         }
     }
 
     @objc private func actionCreateTxtFile(_ sender: AnyObject?) {
-        for url in selectedTargets() where url.hasDirectoryPath {
+        for url in creatableFolderTargets() {
             FinderSyncActions.createFile(inDirectory: url.path, baseName: "新建文件", extension: "txt")
         }
     }
 
     @objc private func actionOpenInNewFinderWindow(_ sender: AnyObject?) {
-        for url in selectedTargets() where url.hasDirectoryPath {
-            IPCClient.send(IPCRequest(action: .openInNewFinderWindow, paths: [url.path]))
-        }
+        let paths = newWindowTargets(for: .contextualMenuForItems).map(\.path)
+        guard !paths.isEmpty else { return }
+        IPCClient.send(IPCRequest(action: .openInNewFinderWindow, paths: paths))
     }
 }
