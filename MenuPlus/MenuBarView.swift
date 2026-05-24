@@ -19,8 +19,7 @@ struct MenuBarView: View {
             }
 
             Button("设置…") {
-                NSApp.activate(ignoringOtherApps: true)
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                AppDelegate.shared?.showSettingsWindow()
             }
 
             Button("退出 MenuPlus") {

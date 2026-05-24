@@ -18,16 +18,19 @@ struct MenuPlusApp: App {
             MenuBarView()
                 .environmentObject(runtime)
         }
-
-        Settings {
-            ContentView()
-                .environmentObject(runtime)
-                .frame(minWidth: 460, minHeight: 420)
-        }
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    static weak var shared: AppDelegate?
+
+    private var settingsWindowController: SettingsWindowController?
+
+    override init() {
+        super.init()
+        Self.shared = self
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppRuntime.shared.presentStartupGuidanceIfNeeded()
     }
@@ -50,5 +53,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             IPCExecutor.execute(request)
         }
+    }
+
+    func showSettingsWindow() {
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindowController(runtime: AppRuntime.shared)
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindowController?.showWindow(nil)
+        settingsWindowController?.window?.makeKeyAndOrderFront(nil)
+        settingsWindowController?.window?.orderFrontRegardless()
+    }
+}
+
+final class SettingsWindowController: NSWindowController {
+    init(runtime: AppRuntime) {
+        let rootView = ContentView()
+            .environmentObject(runtime)
+            .frame(minWidth: 460, minHeight: 420)
+
+        let hostingController = NSHostingController(rootView: rootView)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "MenuPlus 设置"
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.setContentSize(NSSize(width: 520, height: 480))
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.tabbingMode = .disallowed
+
+        super.init(window: window)
+        shouldCascadeWindows = false
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 }
