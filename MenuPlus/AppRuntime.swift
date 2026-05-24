@@ -3,19 +3,28 @@ import Combine
 import FinderSync
 import UserNotifications
 
+enum BundleInstallState {
+    case applications
+    case derivedData
+    case other
+}
+
 @MainActor
 final class AppRuntime: ObservableObject {
     static let shared = AppRuntime()
 
     @Published private(set) var isFinderExtensionEnabled = FIFinderSyncController.isExtensionEnabled
     @Published private(set) var notificationStatus: UNAuthorizationStatus = .notDetermined
+    @Published private(set) var bundleInstallState: BundleInstallState = .other
 
     private var hasPresentedDisabledExtensionAlertThisLaunch = false
+    private var hasPresentedBundleLocationAlertThisLaunch = false
 
     private init() {}
 
     func refreshStatus() {
         isFinderExtensionEnabled = FIFinderSyncController.isExtensionEnabled
+        bundleInstallState = detectBundleInstallState()
 
         Task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
@@ -39,6 +48,12 @@ final class AppRuntime: ObservableObject {
     func presentStartupGuidanceIfNeeded() {
         refreshStatus()
 
+        if shouldPresentBundleLocationGuidance, !hasPresentedBundleLocationAlertThisLaunch {
+            hasPresentedBundleLocationAlertThisLaunch = true
+            presentBundleLocationGuidance()
+            return
+        }
+
         guard !isFinderExtensionEnabled, !hasPresentedDisabledExtensionAlertThisLaunch else {
             return
         }
@@ -47,12 +62,88 @@ final class AppRuntime: ObservableObject {
         presentFinderExtensionGuidance()
     }
 
+    var bundleLocationPath: String {
+        Bundle.main.bundleURL.path
+    }
+
+    var bundleLocationSummary: String {
+        switch bundleInstallState {
+        case .applications:
+            return "应用程序"
+        case .derivedData:
+            return "Xcode DerivedData"
+        case .other:
+            return "自定义位置"
+        }
+    }
+
+    var bundleLocationGuidanceText: String {
+        switch bundleInstallState {
+        case .applications:
+            return "当前已从 /Applications 运行，适合验证 Finder 扩展启用链路。"
+        case .derivedData:
+            return "当前正在从 Xcode DerivedData 运行。Finder 扩展在这种路径下经常会出现“系统已注册但设置页不稳定”的情况，建议复制到 /Applications 后再启用。"
+        case .other:
+            return "当前不是从 /Applications 运行。若 Finder 扩展状态反复异常，建议复制到 /Applications 后再重新启用。"
+        }
+    }
+
+    private var shouldPresentBundleLocationGuidance: Bool {
+        bundleInstallState != .applications
+    }
+
+    private func detectBundleInstallState() -> BundleInstallState {
+        let path = bundleLocationPath
+        if path.hasPrefix("/Applications/") {
+            return .applications
+        }
+        if path.contains("/DerivedData/") {
+            return .derivedData
+        }
+        return .other
+    }
+
+    private func presentBundleLocationGuidance() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        let alert = NSAlert()
+        alert.messageText = "建议从 /Applications 启用 MenuPlus"
+        alert.informativeText = """
+        MenuPlus 是 Finder 扩展，不会出现在“文件提供程序”里；请去“系统设置 → 隐私与安全性 → 扩展 → Finder 扩展”启用。
+
+        \(bundleLocationGuidanceText)
+
+        当前运行位置：
+        \(bundleLocationPath)
+        """
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "显示当前 App")
+        alert.addButton(withTitle: "打开扩展管理")
+        alert.addButton(withTitle: "稍后")
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            revealCurrentAppInFinder()
+        case .alertSecondButtonReturn:
+            openFinderExtensionManagement()
+        default:
+            break
+        }
+    }
+
     func presentFinderExtensionGuidance() {
         NSApp.activate(ignoringOtherApps: true)
 
         let alert = NSAlert()
         alert.messageText = "启用 Finder 扩展"
-        alert.informativeText = "MenuPlus 的右键菜单依赖 Finder 扩展。请在系统弹出的扩展管理界面中启用 MenuPlus；启用后回到这里点一次“刷新状态”即可。"
+        alert.informativeText = """
+        MenuPlus 的右键菜单依赖 Finder 扩展。
+
+        请前往“系统设置 → 隐私与安全性 → 扩展 → Finder 扩展”启用 MenuPlus。
+        注意：它不会出现在“文件提供程序”里。
+
+        启用后回到这里点一次“刷新状态”即可。
+        """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "打开扩展管理")
         alert.addButton(withTitle: "稍后")
@@ -70,6 +161,14 @@ final class AppRuntime: ObservableObject {
         }
 
         SystemSettingsNavigator.openExtensionsFallback()
+    }
+
+    func revealCurrentAppInFinder() {
+        NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
+    }
+
+    func openApplicationsFolder() {
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications", isDirectory: true))
     }
 }
 

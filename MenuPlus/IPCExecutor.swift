@@ -22,6 +22,12 @@ enum IPCExecutor {
         case .openInTerminal:
             openInTerminal(paths: request.paths)
 
+        case .createBlankFile:
+            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: nil, actionName: "新建文件")
+
+        case .createTxtFile:
+            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: "txt", actionName: "新建 txt 文件")
+
         case .openInNewFinderWindow:
             openInNewFinderWindows(paths: request.paths)
         }
@@ -30,23 +36,50 @@ enum IPCExecutor {
     // MARK: - 具体动作
 
     private static func openInTerminal(paths: [String]) {
-        let urls = paths.map(URL.init(fileURLWithPath:))
-        guard !urls.isEmpty else {
+        guard !paths.isEmpty else {
             return FailurePresenter.present(action: "在终端打开", reason: "缺少目标路径")
         }
 
-        let terminalURL = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
-        let config = NSWorkspace.OpenConfiguration()
-        config.activates = false
-
-        NSWorkspace.shared.open(
-            urls,
-            withApplicationAt: terminalURL,
-            configuration: config
-        ) { _, error in
-            if let error {
+        for path in paths {
+            do {
+                try SecurityScopedDirectoryStore.withAccess(to: path, actionName: "在终端打开") { directoryURL in
+                    try openTerminal(directoryURL: directoryURL)
+                }
+            } catch {
                 FailurePresenter.present(action: "在终端打开", reason: error.localizedDescription)
             }
+        }
+    }
+
+    private static func openTerminal(directoryURL: URL) throws {
+        let terminalURL = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
+        guard FileManager.default.fileExists(atPath: terminalURL.path) else {
+            throw NSError(
+                domain: "MenuPlus.IPCExecutor",
+                code: 10,
+                userInfo: [NSLocalizedDescriptionKey: "未找到 Terminal.app"]
+            )
+        }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var completionError: Error?
+
+        NSWorkspace.shared.open(
+            [directoryURL],
+            withApplicationAt: terminalURL,
+            configuration: configuration
+        ) { _, error in
+            completionError = error
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+
+        if let completionError {
+            throw completionError
         }
     }
 
@@ -90,5 +123,51 @@ enum IPCExecutor {
         }
 
         FailurePresenter.present(action: "在新窗口打开", reason: reason)
+    }
+
+    private static func createFiles(
+        paths: [String],
+        baseName: String,
+        fileExtension: String?,
+        actionName: String
+    ) {
+        guard !paths.isEmpty else {
+            return FailurePresenter.present(action: actionName, reason: "缺少目标路径")
+        }
+
+        for path in paths {
+            do {
+                try SecurityScopedDirectoryStore.withAccess(to: path, actionName: actionName) { directoryURL in
+                    try createFile(in: directoryURL, baseName: baseName, fileExtension: fileExtension)
+                }
+            } catch {
+                FailurePresenter.present(action: actionName, reason: error.localizedDescription)
+            }
+        }
+    }
+
+    private static func createFile(
+        in directoryURL: URL,
+        baseName: String,
+        fileExtension: String?
+    ) throws {
+        let suffix = fileExtension.map { ".\($0)" } ?? ""
+        var candidateName = "\(baseName)\(suffix)"
+        var index = 2
+
+        while FileManager.default.fileExists(atPath: directoryURL.appendingPathComponent(candidateName).path) {
+            candidateName = "\(baseName) \(index)\(suffix)"
+            index += 1
+        }
+
+        let targetURL = directoryURL.appendingPathComponent(candidateName)
+        let created = FileManager.default.createFile(atPath: targetURL.path, contents: nil)
+        guard created else {
+            throw NSError(
+                domain: "MenuPlus.IPCExecutor",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "无法在 \(directoryURL.path) 创建 \(candidateName)"]
+            )
+        }
     }
 }

@@ -15,9 +15,17 @@ import Foundation
 
 enum IPCAction: String, Codable {
     case openInTerminal
+    case createBlankFile
+    case createTxtFile
     case openInNewFinderWindow
     // 未来可扩展更多动作
+
+    static func resolve(from rawValue: String) -> IPCAction? {
+        allCases.first { $0.rawValue.caseInsensitiveCompare(rawValue) == .orderedSame }
+    }
 }
+
+extension IPCAction: CaseIterable {}
 
 struct IPCRequest {
     let action: IPCAction
@@ -29,21 +37,32 @@ struct IPCRequest {
     func toURL() -> URL? {
         var comp = URLComponents()
         comp.scheme = "menuplus"
-        comp.host = action.rawValue
+        comp.host = "ipc"
         guard let json = try? JSONEncoder().encode(paths),
               let b64 = String(data: json.base64EncodedData(), encoding: .utf8) else {
             return nil
         }
-        comp.queryItems = [URLQueryItem(name: "paths", value: b64)]
+        comp.queryItems = [
+            URLQueryItem(name: "action", value: action.rawValue),
+            URLQueryItem(name: "paths", value: b64)
+        ]
         return comp.url
     }
 
     /// 从主 App 收到的 URL 反向解析
     static func from(url: URL) -> IPCRequest? {
-        guard url.scheme == "menuplus",
-              let host = url.host,
-              let action = IPCAction(rawValue: host) else { return nil }
         let comp = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        guard url.scheme == "menuplus" else { return nil }
+
+        let actionRawValue =
+            comp?.queryItems?.first(where: { $0.name == "action" })?.value
+            ?? url.host
+            ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+        guard let action = IPCAction.resolve(from: actionRawValue) else {
+            return nil
+        }
+
         guard let b64 = comp?.queryItems?.first(where: { $0.name == "paths" })?.value,
               let data = Data(base64Encoded: b64),
               let paths = try? JSONDecoder().decode([String].self, from: data) else {

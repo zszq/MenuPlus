@@ -56,13 +56,28 @@ struct ContentView: View {
                             runtime.requestNotificationAuthorization()
                         }
                     }
+
+                    statusRow(
+                        title: "当前运行位置",
+                        value: runtime.bundleLocationSummary,
+                        color: runtime.bundleInstallState == .applications ? .green : .orange,
+                        buttonTitle: "显示当前 App…"
+                    ) {
+                        runtime.revealCurrentAppInFinder()
+                    }
                 }
                 .padding(8)
             }
 
             GroupBox("Finder 右键菜单") {
                 VStack(alignment: .leading, spacing: 10) {
+                    Text("MenuPlus 是 Finder Sync Extension，不会出现在“登录项与扩展 → 文件提供程序”里；请前往“隐私与安全性 → 扩展 → Finder 扩展”启用。")
+                        .foregroundColor(.secondary)
                     Text("MenuPlus 使用 Finder Sync Extension 提供右键菜单。首次安装、切换构建产物路径，或从 Xcode 直接调试后，通常都需要重新确认扩展启用状态。")
+                        .foregroundColor(.secondary)
+                    Text(runtime.bundleLocationGuidanceText)
+                        .foregroundColor(runtime.bundleInstallState == .applications ? .secondary : .orange)
+                    Text("在 Finder 空白区域执行“新建文件 / 新建 txt 文件”时，MenuPlus 会弹出目录授权面板；请直接选中当前目录本身，后续会自动复用这次授权。")
                         .foregroundColor(.secondary)
                     Text("“在新窗口打开”这类需要控制 Finder 的动作，会在首次使用时触发系统自动化授权；如果你曾拒绝，请到“系统设置 → 隐私与安全性 → 自动化”重新勾选 MenuPlus。")
                         .foregroundColor(.secondary)
@@ -70,6 +85,9 @@ struct ContentView: View {
                     HStack {
                         Button("打开扩展管理…") {
                             runtime.openFinderExtensionManagement()
+                        }
+                        Button("打开应用程序文件夹…") {
+                            runtime.openApplicationsFolder()
                         }
                         Button("刷新状态") {
                             runtime.refreshStatus()

@@ -9,7 +9,6 @@ import SwiftUI
 import UserNotifications
 
 struct MenuBarView: View {
-    @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var runtime: AppRuntime
 
     var body: some View {
@@ -18,6 +17,12 @@ struct MenuBarView: View {
                 title: "Finder 扩展",
                 value: runtime.isFinderExtensionEnabled ? "已启用" : "未启用",
                 color: runtime.isFinderExtensionEnabled ? .green : .orange
+            )
+
+            statusLine(
+                title: "运行位置",
+                value: runtime.bundleLocationSummary,
+                color: runtime.bundleInstallState == .applications ? .green : .orange
             )
 
             statusLine(
@@ -40,9 +45,15 @@ struct MenuBarView: View {
             runtime.refreshStatus()
         }
 
+        if runtime.bundleInstallState != .applications {
+            Button("显示当前 App…") {
+                runtime.revealCurrentAppInFinder()
+            }
+        }
+
         Button("设置…") {
             NSApp.activate(ignoringOtherApps: true)
-            openWindow(id: "settings")
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
         }
 
         Divider()

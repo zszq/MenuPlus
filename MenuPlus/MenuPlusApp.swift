@@ -19,13 +19,11 @@ struct MenuPlusApp: App {
                 .environmentObject(runtime)
         }
 
-        Window("MenuPlus 设置", id: "settings") {
+        Settings {
             ContentView()
                 .environmentObject(runtime)
+                .frame(minWidth: 460, minHeight: 420)
         }
-        .windowStyle(.titleBar)
-        .windowResizability(.contentSize)
-        .defaultSize(width: 460, height: 420)
     }
 }
 

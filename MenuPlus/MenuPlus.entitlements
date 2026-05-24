@@ -2,23 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- 已启用 App Sandbox（App Store 改造阶段 1，ad-hoc 签名本地同样生效） -->
-    <key>com.apple.security.app-sandbox</key>
-    <true/>
+	<!-- 允许主 App 持久化 security-scoped bookmark，避免每次“新建文件”都重新弹授权 -->
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
 
-    <!-- AppleScript 自动化权限（用于控制 Terminal） -->
-    <key>com.apple.security.automation.apple-events</key>
-    <true/>
-
-    <!--
-        Phase 0 验证结论：ad-hoc 签名直接拒绝 application-groups entitlement
-        （Xcode 报 "requires a provisioning profile"），App Group 主路线在
-        当前签名环境下不可行。如未来接入 Apple Developer 账号，可恢复：
-
-        <key>com.apple.security.application-groups</key>
-        <array>
-            <string>group.zl.MenuPlus</string>
-        </array>
-    -->
+	<!-- “在新窗口打开” 仍通过 Apple Events 控制 Finder，需要系统自动化授权 -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
 </dict>
 </plist>
