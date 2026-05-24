@@ -169,10 +169,6 @@ final class AppRuntime: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
     }
 
-    func openApplicationsFolder() {
-        NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications", isDirectory: true))
-    }
-
     func refreshAuthorizedDirectories() {
         do {
             authorizedDirectoryPaths = try SecurityScopedDirectoryStore.authorizedDirectoryPaths()

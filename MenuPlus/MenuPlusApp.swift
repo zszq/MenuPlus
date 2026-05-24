@@ -71,14 +71,14 @@ final class SettingsWindowController: NSWindowController {
     init(runtime: AppRuntime) {
         let rootView = ContentView()
             .environmentObject(runtime)
-            .frame(minWidth: 520, minHeight: 360)
+            .frame(minWidth: 620, minHeight: 520)
 
         let hostingController = NSHostingController(rootView: rootView)
         let window = NSWindow(contentViewController: hostingController)
         window.title = "MenuPlus 设置"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.setContentSize(NSSize(width: 620, height: 640))
-        window.contentMinSize = NSSize(width: 520, height: 360)
+        window.setContentSize(NSSize(width: 780, height: 680))
+        window.contentMinSize = NSSize(width: 620, height: 520)
         window.center()
         window.isReleasedWhenClosed = false
         window.tabbingMode = .disallowed
