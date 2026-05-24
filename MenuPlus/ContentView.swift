@@ -30,22 +30,9 @@ struct ContentView: View {
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 20) {
                         GroupBox("通用") {
-                            Toggle("开机启动", isOn: $launchAtLogin)
-                                .onChange(of: launchAtLogin) { newValue in
-                                    guard #available(macOS 13, *) else { return }
-                                    do {
-                                        if newValue { try SMAppService.mainApp.register() }
-                                        else { try SMAppService.mainApp.unregister() }
-                                        launchAtLogin = SMAppService.mainApp.status == .enabled
-                                    } catch {
-                                        launchAtLogin = !newValue
-                                    }
-                                }
-                                .padding(8)
-                        }
-
-                        GroupBox("系统状态") {
                             VStack(alignment: .leading, spacing: 12) {
+                                launchAtLoginRow()
+
                                 statusRow(
                                     title: "Finder 扩展",
                                     value: runtime.isFinderExtensionEnabled ? "已启用" : "未启用",
@@ -149,10 +136,35 @@ struct ContentView: View {
         .padding(16)
         .frame(minWidth: 620, minHeight: 520)
         .onAppear {
+            refreshLaunchAtLoginState()
             runtime.refreshStatus()
         }
         .onChange(of: runtime.authorizedDirectoryPaths) { newPaths in
             selectedAuthorizedDirectories.formIntersection(Set(newPaths))
+        }
+    }
+
+    private func launchAtLoginRow() -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Circle()
+                .fill(launchAtLogin ? Color.green : Color.orange)
+                .frame(width: 10, height: 10)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("开机启动")
+                    .font(.headline)
+                Text(launchAtLogin ? "已开启" : "未开启")
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { launchAtLogin },
+                set: { setLaunchAtLogin($0) }
+            ))
+                .labelsHidden()
+                .toggleStyle(.switch)
         }
     }
 
@@ -213,6 +225,33 @@ struct ContentView: View {
             return "授权通知…"
         default:
             return "打开通知设置"
+        }
+    }
+
+    private func refreshLaunchAtLoginState() {
+        guard #available(macOS 13, *) else {
+            launchAtLogin = false
+            return
+        }
+
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+    }
+
+    private func setLaunchAtLogin(_ isEnabled: Bool) {
+        guard #available(macOS 13, *) else {
+            launchAtLogin = false
+            return
+        }
+
+        do {
+            if isEnabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            refreshLaunchAtLoginState()
+        } catch {
+            launchAtLogin = !isEnabled
         }
     }
 }
