@@ -16,10 +16,6 @@ struct MenuBarView: View {
             openWindow(id: "settings")
         }
 
-        Button("打开 Finder 扩展设置…") {
-            ExtensionsPreferences.open()
-        }
-
         Divider()
 
         Button("退出 MenuPlus") {
