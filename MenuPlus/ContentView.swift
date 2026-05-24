@@ -258,6 +258,6 @@ struct ContentView: View {
 
 extension Bundle {
     var shortVersion: String {
-        infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
     }
 }
