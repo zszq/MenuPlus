@@ -100,9 +100,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     GroupBox("目录授权") {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("现在支持按父目录复用授权：例如先授权 `/Projects`，那么 `/Projects/AppA`、`/Projects/AppB/Subdir` 都不会再次弹出授权。")
-                                .foregroundColor(.secondary)
-                            Text("你也可以在这里提前添加常用目录；这些目录及其所有子目录都会直接复用授权。")
+                            Text("添加常用目录根目录，这些目录及其所有子目录都会直接复用授权，避免多次触发授权。")
                                 .foregroundColor(.secondary)
 
                             HStack {
