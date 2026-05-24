@@ -19,148 +19,151 @@ struct ContentView: View {
     @State private var selectedAuthorizedDirectories = Set<String>()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Image(systemName: "filemenu.and.cursorarrow")
-                    .font(.system(size: 40))
-                    .foregroundColor(.accentColor)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("MenuPlus").font(.title).bold()
-                    Text("版本 \(Bundle.main.shortVersion)")
-                        .foregroundColor(.secondary)
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack {
+                    Image(systemName: "filemenu.and.cursorarrow")
+                        .font(.system(size: 40))
+                        .foregroundColor(.accentColor)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("MenuPlus").font(.title).bold()
+                        Text("版本 \(Bundle.main.shortVersion)")
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
                 }
-                Spacer()
-            }
 
-            Divider()
+                Divider()
 
-            GroupBox("系统状态") {
-                VStack(alignment: .leading, spacing: 12) {
-                    statusRow(
-                        title: "Finder 扩展",
-                        value: runtime.isFinderExtensionEnabled ? "已启用" : "未启用",
-                        color: runtime.isFinderExtensionEnabled ? .green : .orange,
-                        buttonTitle: runtime.isFinderExtensionEnabled ? "重新打开扩展管理…" : "立即启用…"
-                    ) {
-                        runtime.openFinderExtensionManagement()
-                    }
-
-                    statusRow(
-                        title: "通知权限",
-                        value: notificationStatusText(runtime.notificationStatus),
-                        color: notificationStatusColor(runtime.notificationStatus),
-                        buttonTitle: runtime.notificationStatus == .authorized ? "打开通知设置" : "授权通知…"
-                    ) {
-                        if runtime.notificationStatus == .authorized {
-                            SystemSettingsNavigator.openNotificationsPrivacy()
-                        } else {
-                            runtime.requestNotificationAuthorization()
-                        }
-                    }
-
-                    statusRow(
-                        title: "当前运行位置",
-                        value: runtime.bundleLocationSummary,
-                        color: runtime.bundleInstallState == .applications ? .green : .orange,
-                        buttonTitle: "显示当前 App…"
-                    ) {
-                        runtime.revealCurrentAppInFinder()
-                    }
-                }
-                .padding(8)
-            }
-
-            GroupBox("Finder 右键菜单") {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("MenuPlus 是 Finder Sync Extension，不会出现在“登录项与扩展 → 文件提供程序”里；请前往“隐私与安全性 → 扩展 → Finder 扩展”启用。")
-                        .foregroundColor(.secondary)
-                    Text("MenuPlus 使用 Finder Sync Extension 提供右键菜单。首次安装、切换构建产物路径，或从 Xcode 直接调试后，通常都需要重新确认扩展启用状态。")
-                        .foregroundColor(.secondary)
-                    Text(runtime.bundleLocationGuidanceText)
-                        .foregroundColor(runtime.bundleInstallState == .applications ? .secondary : .orange)
-                    Text("在 Finder 空白区域执行“新建文件 / 新建 txt 文件”时，MenuPlus 会弹出目录授权面板；请直接选中当前目录本身，后续会自动复用这次授权。")
-                        .foregroundColor(.secondary)
-                    Text("“在新窗口打开”会由主 App 直接把目录交给 Finder 打开；如果系统要求目录访问权限，请直接授权当前目录，后续会自动复用。")
-                        .foregroundColor(.secondary)
-
-                    HStack {
-                        Button("打开扩展管理…") {
+                GroupBox("系统状态") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        statusRow(
+                            title: "Finder 扩展",
+                            value: runtime.isFinderExtensionEnabled ? "已启用" : "未启用",
+                            color: runtime.isFinderExtensionEnabled ? .green : .orange,
+                            buttonTitle: runtime.isFinderExtensionEnabled ? "重新打开扩展管理…" : "立即启用…"
+                        ) {
                             runtime.openFinderExtensionManagement()
                         }
-                        Button("打开应用程序文件夹…") {
-                            runtime.openApplicationsFolder()
-                        }
-                        Button("刷新状态") {
-                            runtime.refreshStatus()
-                        }
-                    }
-                }
-                .padding(8)
-            }
 
-            GroupBox("目录授权") {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("现在支持按父目录复用授权：例如先授权 `/Projects`，那么 `/Projects/AppA`、`/Projects/AppB/Subdir` 都不会再次弹出授权。")
-                        .foregroundColor(.secondary)
-                    Text("你也可以在这里提前添加常用目录；这些目录及其所有子目录都会直接复用授权。")
-                        .foregroundColor(.secondary)
-
-                    HStack {
-                        Button("添加授权目录…") {
-                            runtime.authorizeDirectoriesFromSettings()
-                        }
-                        Button("移除所选授权") {
-                            runtime.removeAuthorizedDirectories(Array(selectedAuthorizedDirectories))
-                            selectedAuthorizedDirectories.removeAll()
-                        }
-                        .disabled(selectedAuthorizedDirectories.isEmpty)
-
-                        Button("刷新列表") {
-                            runtime.refreshAuthorizedDirectories()
-                        }
-                    }
-
-                    if runtime.authorizedDirectoryPaths.isEmpty {
-                        Text("暂未保存任何目录授权。")
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 8)
-                    } else {
-                        List(runtime.authorizedDirectoryPaths, id: \.self, selection: $selectedAuthorizedDirectories) { path in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(path)
-                                    .textSelection(.enabled)
-                                Text("该目录下的所有子目录都会复用这次授权")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                        statusRow(
+                            title: "通知权限",
+                            value: notificationStatusText(runtime.notificationStatus),
+                            color: notificationStatusColor(runtime.notificationStatus),
+                            buttonTitle: runtime.notificationStatus == .authorized ? "打开通知设置" : "授权通知…"
+                        ) {
+                            if runtime.notificationStatus == .authorized {
+                                SystemSettingsNavigator.openNotificationsPrivacy()
+                            } else {
+                                runtime.requestNotificationAuthorization()
                             }
-                            .padding(.vertical, 2)
                         }
-                        .frame(minHeight: 150)
-                    }
-                }
-                .padding(8)
-            }
 
-            GroupBox("通用") {
-                Toggle("开机启动", isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { newValue in
-                        guard #available(macOS 13, *) else { return }
-                        do {
-                            if newValue { try SMAppService.mainApp.register() }
-                            else { try SMAppService.mainApp.unregister() }
-                            launchAtLogin = SMAppService.mainApp.status == .enabled
-                        } catch {
-                            launchAtLogin = !newValue
+                        statusRow(
+                            title: "当前运行位置",
+                            value: runtime.bundleLocationSummary,
+                            color: runtime.bundleInstallState == .applications ? .green : .orange,
+                            buttonTitle: "显示当前 App…"
+                        ) {
+                            runtime.revealCurrentAppInFinder()
                         }
                     }
                     .padding(8)
-            }
+                }
 
-            Spacer()
+                GroupBox("Finder 右键菜单") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("MenuPlus 是 Finder Sync Extension，不会出现在“登录项与扩展 → 文件提供程序”里；请前往“隐私与安全性 → 扩展 → Finder 扩展”启用。")
+                            .foregroundColor(.secondary)
+                        Text("MenuPlus 使用 Finder Sync Extension 提供右键菜单。首次安装、切换构建产物路径，或从 Xcode 直接调试后，通常都需要重新确认扩展启用状态。")
+                            .foregroundColor(.secondary)
+                        Text(runtime.bundleLocationGuidanceText)
+                            .foregroundColor(runtime.bundleInstallState == .applications ? .secondary : .orange)
+                        Text("在 Finder 空白区域执行“新建文件 / 新建 txt 文件”时，MenuPlus 会弹出目录授权面板；请直接选中当前目录本身，后续会自动复用这次授权。")
+                            .foregroundColor(.secondary)
+                        Text("“在新窗口打开”会由主 App 直接把目录交给 Finder 打开；如果系统要求目录访问权限，请直接授权当前目录，后续会自动复用。")
+                            .foregroundColor(.secondary)
+
+                        HStack {
+                            Button("打开扩展管理…") {
+                                runtime.openFinderExtensionManagement()
+                            }
+                            Button("打开应用程序文件夹…") {
+                                runtime.openApplicationsFolder()
+                            }
+                            Button("刷新状态") {
+                                runtime.refreshStatus()
+                            }
+                        }
+                    }
+                    .padding(8)
+                }
+
+                GroupBox("目录授权") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("现在支持按父目录复用授权：例如先授权 `/Projects`，那么 `/Projects/AppA`、`/Projects/AppB/Subdir` 都不会再次弹出授权。")
+                            .foregroundColor(.secondary)
+                        Text("你也可以在这里提前添加常用目录；这些目录及其所有子目录都会直接复用授权。")
+                            .foregroundColor(.secondary)
+
+                        HStack {
+                            Button("添加授权目录…") {
+                                runtime.authorizeDirectoriesFromSettings()
+                            }
+                            Button("移除所选授权") {
+                                runtime.removeAuthorizedDirectories(Array(selectedAuthorizedDirectories))
+                                selectedAuthorizedDirectories.removeAll()
+                            }
+                            .disabled(selectedAuthorizedDirectories.isEmpty)
+
+                            Button("刷新列表") {
+                                runtime.refreshAuthorizedDirectories()
+                            }
+                        }
+
+                        if runtime.authorizedDirectoryPaths.isEmpty {
+                            Text("暂未保存任何目录授权。")
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 8)
+                        } else {
+                            List(runtime.authorizedDirectoryPaths, id: \.self, selection: $selectedAuthorizedDirectories) { path in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(path)
+                                        .textSelection(.enabled)
+                                    Text("该目录下的所有子目录都会复用这次授权")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.vertical, 2)
+                            }
+                            .frame(minHeight: 150)
+                        }
+                    }
+                    .padding(8)
+                }
+
+                GroupBox("通用") {
+                    Toggle("开机启动", isOn: $launchAtLogin)
+                        .onChange(of: launchAtLogin) { newValue in
+                            guard #available(macOS 13, *) else { return }
+                            do {
+                                if newValue { try SMAppService.mainApp.register() }
+                                else { try SMAppService.mainApp.unregister() }
+                                launchAtLogin = SMAppService.mainApp.status == .enabled
+                            } catch {
+                                launchAtLogin = !newValue
+                            }
+                        }
+                        .padding(8)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(24)
         }
-        .padding(24)
-        .frame(minWidth: 520, minHeight: 560)
+        .frame(minWidth: 520, minHeight: 360)
         .onAppear {
             runtime.refreshStatus()
         }
