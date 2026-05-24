@@ -54,6 +54,13 @@
 			);
 			target = 781F9DA52FC18FA700DF3CFC /* FinderExt */;
 		};
+		89B572CDD706481DB3E4D1718759EEC5 /* Exceptions for "MenuPlus" folder in "MenuPlus" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 78AC028D2FB23B0900E4789A /* MenuPlus */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -67,6 +74,9 @@
 		};
 		78AC02902FB23B0900E4789A /* MenuPlus */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				89B572CDD706481DB3E4D1718759EEC5 /* Exceptions for "MenuPlus" folder in "MenuPlus" target */,
+			);
 			path = MenuPlus;
 			sourceTree = "<group>";
 		};
