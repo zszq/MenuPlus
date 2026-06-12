@@ -33,6 +33,9 @@ enum IPCExecutor {
 
         case .createFromTemplate:
             createFromTemplate(request)
+
+        case .openWithApp:
+            openWithApp(paths: request.paths, appPath: request.appPath)
         }
     }
 
@@ -124,6 +127,87 @@ enum IPCExecutor {
         NSWorkspace.shared.open(
             [directoryURL],
             withApplicationAt: finderAppURL,
+            configuration: configuration
+        ) { _, error in
+            completionError = error
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+
+        if let completionError {
+            throw completionError
+        }
+    }
+
+    /// 用自定义应用打开目标（文件或文件夹皆可）。
+    /// security scope 以目录为单位授权：文件夹授权自身，文件和文件包授权其父目录——
+    /// 这样父目录的已有 bookmark（如设置页预授权的根目录）可直接复用。
+    private static func openWithApp(paths: [String], appPath: String?) {
+        // App 名从路径推导（去 .app 后缀），保证 appPath 异常时失败提示仍可读
+        let appURL = appPath.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        let appName = appURL?.deletingPathExtension().lastPathComponent ?? "应用"
+        let actionName = "用 \(appName) 打开"
+
+        guard let appURL, FileManager.default.fileExists(atPath: appURL.path) else {
+            return FailurePresenter.present(
+                action: actionName,
+                reason: "找不到应用：\(appPath ?? "（缺失）")，请在设置页重新添加。"
+            )
+        }
+
+        guard !paths.isEmpty else {
+            return FailurePresenter.present(action: actionName, reason: "缺少目标路径")
+        }
+
+        for path in paths {
+            // 扩展传来的纯字符串路径丢失了"是否目录"信息，按真实文件系统判断
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else {
+                FailurePresenter.present(action: actionName, reason: "目标不存在：\(path)")
+                continue
+            }
+
+            // 文件包（.rtfd/.key/.pages 等）虽是目录，但授权面板（仅可选目录）里
+            // 包显示为文件、无法被选中，授权链路会卡死；必须按文件对待，授权其父目录
+            let isPackage = isDirectory.boolValue && NSWorkspace.shared.isFilePackage(atPath: path)
+            let scopeIsTargetItself = isDirectory.boolValue && !isPackage
+
+            let standardizedTarget = URL(fileURLWithPath: path).standardizedFileURL
+            let scopeDirectoryPath = scopeIsTargetItself
+                ? standardizedTarget.path
+                : standardizedTarget.deletingLastPathComponent().path
+
+            do {
+                try SecurityScopedDirectoryStore.withAccess(to: scopeDirectoryPath, actionName: actionName) { directoryURL in
+                    // scopedURL 拼子路径全程 isDirectory: true，文件/包目标需在 scope 目录下
+                    // 自行拼最后一段，isDirectory 取真实文件系统结果，避免被错判
+                    let targetURL = scopeIsTargetItself
+                        ? directoryURL
+                        : directoryURL.appendingPathComponent(
+                            standardizedTarget.lastPathComponent,
+                            isDirectory: isDirectory.boolValue
+                        )
+                    try open(targetURL: targetURL, withApplicationAt: appURL)
+                }
+            } catch {
+                FailurePresenter.present(action: actionName, reason: error.localizedDescription)
+            }
+        }
+    }
+
+    /// 信号量等待 completion 的模式与 openTerminal 一致：
+    /// withAccess 的 security scope 在闭包返回时即关闭，必须等 open 结束再返回。
+    private static func open(targetURL: URL, withApplicationAt appURL: URL) throws {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var completionError: Error?
+
+        NSWorkspace.shared.open(
+            [targetURL],
+            withApplicationAt: appURL,
             configuration: configuration
         ) { _, error in
             completionError = error

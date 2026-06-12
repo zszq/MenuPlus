@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import FinderSync
+import UniformTypeIdentifiers
 import UserNotifications
 
 enum BundleInstallState {
@@ -18,6 +19,7 @@ final class AppRuntime: ObservableObject {
     @Published private(set) var notificationStatus: UNAuthorizationStatus = .notDetermined
     @Published private(set) var bundleInstallState: BundleInstallState = .other
     @Published private(set) var authorizedDirectoryPaths: [String] = []
+    @Published private(set) var openWithApps: [OpenWithApp] = []
 
     private var hasPresentedDisabledExtensionAlertThisLaunch = false
     private var hasPresentedBundleLocationAlertThisLaunch = false
@@ -38,6 +40,7 @@ final class AppRuntime: ObservableObject {
         isFinderExtensionEnabled = FIFinderSyncController.isExtensionEnabled
         bundleInstallState = detectBundleInstallState()
         refreshAuthorizedDirectories()
+        refreshOpenWithApps()
 
         Task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
@@ -217,6 +220,41 @@ final class AppRuntime: ObservableObject {
         } catch {
             FailurePresenter.present(action: "移除授权目录", reason: error.localizedDescription)
         }
+    }
+
+    // MARK: - "用 XX 打开" 应用管理
+
+    func refreshOpenWithApps() {
+        openWithApps = OpenWithAppStore.apps()
+    }
+
+    /// 设置页"添加应用…"：用 NSOpenPanel 选 .app（允许多选），交给 OpenWithAppStore 持久化。
+    func addOpenWithAppsFromSettings() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.application]
+        // 用户要找的 App 几乎都在 /Applications，作为初始目录减少导航
+        panel.directoryURL = URL(fileURLWithPath: "/Applications", isDirectory: true)
+        panel.message = "选择应用，添加后右键菜单会出现“用 XX 打开”。"
+        panel.prompt = "添加应用"
+
+        guard panel.runModal() == .OK else {
+            return
+        }
+
+        for url in panel.urls {
+            OpenWithAppStore.add(url: url)
+        }
+        refreshOpenWithApps()
+    }
+
+    func removeOpenWithApps(_ appPaths: [String]) {
+        OpenWithAppStore.remove(paths: appPaths)
+        refreshOpenWithApps()
     }
 }
 

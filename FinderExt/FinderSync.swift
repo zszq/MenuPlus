@@ -14,6 +14,8 @@ class FinderSync: FIFinderSync {
         var generalTargets: [URL] = []
         var createFileTargets: [URL] = []
         var newWindowTargets: [URL] = []
+        /// 自定义"用 XX 打开"应用列表，每次构建菜单时从共享配置读取
+        var openWithApps: [OpenWithApp] = []
     }
 
     private let controller = FIFinderSyncController.default()
@@ -55,6 +57,10 @@ class FinderSync: FIFinderSync {
 
         // 监控全盘，使右键菜单在任意路径都可用。
         controller.directoryURLs = [URL(fileURLWithPath: "/")]
+
+        // 诊断日志：读真实 home 共享配置依赖 temporary-exception entitlement（签名/路径不匹配会静默失效），
+        // 启动即读一次并打印结果，部署后可用 log show 确认链路是否通（失败原因由 load 内部分类打印）。
+        NSLog("[MenuPlus/FinderExt] 启动读取共享配置：openWithApps=%d", ExtensionConfigReader.load().count)
     }
 
     override func beginObservingDirectory(at url: URL) {}
@@ -92,7 +98,9 @@ class FinderSync: FIFinderSync {
             terminalTargets: terminalTargets(for: menuKind),
             generalTargets: generalTargets(for: menuKind),
             createFileTargets: createFileTargets(for: menuKind),
-            newWindowTargets: newWindowTargets(for: menuKind)
+            newWindowTargets: newWindowTargets(for: menuKind),
+            // 每次右键都重读配置，保证设置页改动即时生效；文件极小，无性能问题
+            openWithApps: ExtensionConfigReader.load()
         )
     }
 
@@ -111,6 +119,19 @@ class FinderSync: FIFinderSync {
                 title: "在 VSCode 中打开",
                 selector: #selector(actionOpenInVSCode(_:))
             ))
+
+            // 自定义"用 XX 打开"：紧跟内置的 VSCode 项之后。
+            // FinderSync 菜单跨进程序列化回 Finder，representedObject 不可靠，
+            // 用 tag 存 openWithApps 下标做映射（同模板菜单的 tag 模式）。
+            for (index, app) in context.openWithApps.enumerated() {
+                let item = menuItem(
+                    title: "用 \(app.name) 打开",
+                    selector: #selector(actionOpenWithApp(_:))
+                )
+                item.tag = index
+                menu.addItem(item)
+            }
+
             menu.addItem(menuItem(
                 title: "复制路径",
                 selector: #selector(actionCopyFullPath(_:))
@@ -246,6 +267,18 @@ class FinderSync: FIFinderSync {
         for url in currentMenuContext.generalTargets {
             FinderSyncActions.openInVSCode(url: url)
         }
+    }
+
+    @objc private func actionOpenWithApp(_ sender: AnyObject?) {
+        // tag 即 openWithApps 下标（见 buildSubmenu），越界直接忽略
+        let apps = currentMenuContext.openWithApps
+        guard let item = sender as? NSMenuItem, apps.indices.contains(item.tag) else { return }
+        let app = apps[item.tag]
+
+        let paths = currentMenuContext.generalTargets.map(\.path)
+        NSLog("[MenuPlus/FinderExt] 点击菜单：用 %@ 打开，targets=%d", app.name, paths.count)
+        guard !paths.isEmpty else { return }
+        IPCClient.send(IPCRequest(action: .openWithApp, paths: paths, appPath: app.path))
     }
 
     @objc private func actionCopyFullPath(_ sender: AnyObject?) {

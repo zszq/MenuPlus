@@ -5,5 +5,25 @@
 	<!-- 允许主 App 持久化 security-scoped bookmark，避免每次“新建文件”都重新弹授权 -->
 	<key>com.apple.security.files.bookmarks.app-scope</key>
 	<true/>
+
+	<!--
+		主 App ↔ FinderExt 的配置共享通道（"用 XX 打开" 应用列表）。
+
+		为什么不用 App Group：ad-hoc 签名下 application-groups entitlement 构建期
+		被拒（需要 provisioning profile，见 FinderExt.entitlements 内注释）。
+		为什么不写主 App 沙盒容器再让扩展读：macOS 对其他 App 的沙盒容器有系统级
+		保护，FinderSync 监控目录的读授权覆盖不到，实测扩展读取被拒。
+
+		故改用真实 home 下的中立路径 ~/Library/Application Support/MenuPlus/，
+		双端通过 temporary-exception 打通（普通沙盒策略 entitlement，无需
+		provisioning profile，ad-hoc 可用）。
+
+		⚠️ MAS 分发前必须迁移到 App Group 并删除此 exception
+		（temporary-exception 是 App Store 审核高风险项）。
+	-->
+	<key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
+	<array>
+		<string>/Library/Application Support/MenuPlus/</string>
+	</array>
 </dict>
 </plist>

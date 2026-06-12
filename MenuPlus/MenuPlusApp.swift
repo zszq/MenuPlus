@@ -39,6 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 启动即镜像写一次共享配置 JSON：覆盖旧版本升级 / 容器被清的场景，
+        // 否则 Finder 扩展会一直读不到配置而不显示"用 XX 打开"菜单项
+        OpenWithAppStore.mirrorToSharedConfigFile()
+
         if AppRuntime.shared.showsMenuBarIcon {
             AppRuntime.shared.presentStartupGuidanceIfNeeded()
         } else {

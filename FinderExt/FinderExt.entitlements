@@ -32,5 +32,25 @@
             <string>group.zl.MenuPlus</string>
         </array>
     -->
+
+    <!--
+        只读主 App 写出的共享配置（"用 XX 打开" 应用列表）。
+
+        为什么不用 App Group：见上方注释，ad-hoc 构建期被拒。
+        为什么不读主 App 沙盒容器：macOS 对其他 App 的沙盒容器有系统级保护，
+        FinderSync 监控目录的读授权覆盖不到，实测读取被拒
+        （"未能打开文件…因为你没有查看它的权限"）。
+
+        故主 App 改写真实 home 下的中立路径 ~/Library/Application Support/MenuPlus/，
+        扩展用 temporary-exception 只读打通（普通沙盒策略 entitlement，无需
+        provisioning profile，ad-hoc 可用——与 application-groups 不同）。
+
+        ⚠️ MAS 分发前必须迁移到 App Group 并删除此 exception
+        （temporary-exception 是 App Store 审核高风险项）。
+    -->
+    <key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
+    <array>
+        <string>/Library/Application Support/MenuPlus/</string>
+    </array>
 </dict>
 </plist>

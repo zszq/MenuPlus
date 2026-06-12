@@ -12,6 +12,7 @@ import UserNotifications
 private enum SettingsTab: Hashable {
     case general
     case directoryAuthorization
+    case openWith
 }
 
 struct ContentView: View {
@@ -23,6 +24,7 @@ struct ContentView: View {
     }()
     @State private var selectedTab: SettingsTab = .general
     @State private var selectedAuthorizedDirectories = Set<String>()
+    @State private var selectedOpenWithAppPaths = Set<String>()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -134,6 +136,54 @@ struct ContentView: View {
                     Label("目录授权", systemImage: "folder.badge.gearshape")
                 }
                 .tag(SettingsTab.directoryAuthorization)
+
+                VStack(alignment: .leading, spacing: 20) {
+                    GroupBox("打开方式") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("添加应用后，右键菜单的 MenuPlus 子菜单中会出现“用 XX 打开”，可对选中的文件或文件夹使用。")
+                                .foregroundColor(.secondary)
+
+                            HStack {
+                                Button("添加应用…") {
+                                    runtime.addOpenWithAppsFromSettings()
+                                }
+                                Button("移除所选") {
+                                    runtime.removeOpenWithApps(Array(selectedOpenWithAppPaths))
+                                    selectedOpenWithAppPaths.removeAll()
+                                }
+                                .disabled(selectedOpenWithAppPaths.isEmpty)
+                            }
+
+                            if runtime.openWithApps.isEmpty {
+                                Text("暂未添加任何打开方式。")
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 8)
+                            } else {
+                                List(runtime.openWithApps, id: \.path, selection: $selectedOpenWithAppPaths) { app in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(app.name)
+                                        Text(app.path)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .textSelection(.enabled)
+                                    }
+                                    .padding(.vertical, 2)
+                                }
+                                .frame(minHeight: 320)
+                            }
+                        }
+                        .padding(8)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(20)
+                .tabItem {
+                    Label("打开方式", systemImage: "arrow.up.forward.app")
+                }
+                .tag(SettingsTab.openWith)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -145,6 +195,10 @@ struct ContentView: View {
         }
         .onChange(of: runtime.authorizedDirectoryPaths) { newPaths in
             selectedAuthorizedDirectories.formIntersection(Set(newPaths))
+        }
+        .onChange(of: runtime.openWithApps) { newApps in
+            // 列表刷新后清掉已不存在的选中项，避免"移除所选"误删
+            selectedOpenWithAppPaths.formIntersection(Set(newApps.map(\.path)))
         }
     }
 
