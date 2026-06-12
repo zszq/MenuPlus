@@ -246,9 +246,8 @@ final class AppRuntime: ObservableObject {
             return
         }
 
-        for url in panel.urls {
-            OpenWithAppStore.add(url: url)
-        }
+        // 整批传入：一次面板确认只算一次 mutation，损坏数据的两段式确认依赖这一点
+        OpenWithAppStore.add(urls: panel.urls)
         refreshOpenWithApps()
     }
 

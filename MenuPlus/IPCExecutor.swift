@@ -22,11 +22,13 @@ enum IPCExecutor {
         case .openInTerminal:
             openInTerminal(paths: request.paths)
 
+        // actionName 用于授权面板与失败通知，需与菜单文案（"MenuPlus新建" → 空白文件/文本文件）
+        // 语义对应；baseName 是创建到磁盘的默认文件名，刻意保持「新建文件」不变
         case .createBlankFile:
-            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: nil, contents: nil, actionName: "新建文件")
+            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: nil, contents: nil, actionName: "新建空白文件")
 
         case .createTxtFile:
-            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: "txt", contents: nil, actionName: "新建 txt 文件")
+            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: "txt", contents: nil, actionName: "新建文本文件")
 
         case .openInNewFinderWindow:
             openInNewFinderWindows(paths: request.paths)
