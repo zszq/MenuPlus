@@ -37,6 +37,17 @@ class FinderSync: FIFinderSync {
         return icon
     }()
 
+    /// "MenuPlus新建" 顶层菜单图标：用 SF Symbol 表达"新建"语义，
+    /// 延续"扩展不放图标资源"的约定。systemSymbolName 返回的是新实例，
+    /// 不存在 icon(forFile:) 的共享缓存问题，无需 copy；nil 时不设图标，不崩溃。
+    private static let createMenuIcon: NSImage? = {
+        guard let icon = NSImage(systemSymbolName: "doc.badge.plus", accessibilityDescription: "新建文件") else {
+            return nil
+        }
+        icon.size = NSSize(width: 16, height: 16)
+        return icon
+    }()
+
     override init() {
         super.init()
 
@@ -53,15 +64,27 @@ class FinderSync: FIFinderSync {
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
         let context = makeMenuContext(for: menuKind)
         currentMenuContext = context
-        let submenu = buildSubmenu(context: context)
-        guard !submenu.items.isEmpty else { return nil }
 
         let menu = NSMenu(title: "")
-        let parentItem = NSMenuItem(title: "MenuPlus", action: nil, keyEquivalent: "")
-        parentItem.image = Self.menuIcon
-        parentItem.submenu = submenu
-        menu.addItem(parentItem)
-        return menu
+
+        // "MenuPlus"：通用动作子菜单（新建类已迁移到 "MenuPlus新建"）
+        let submenu = buildSubmenu(context: context)
+        if !submenu.items.isEmpty {
+            let parentItem = NSMenuItem(title: "MenuPlus", action: nil, keyEquivalent: "")
+            parentItem.image = Self.menuIcon
+            parentItem.submenu = submenu
+            menu.addItem(parentItem)
+        }
+
+        // "MenuPlus新建"：与 "MenuPlus" 同级的新建模板菜单，无创建目标时不显示
+        if let createSubmenu = buildCreateSubmenu(context: context) {
+            let createItem = NSMenuItem(title: "MenuPlus新建", action: nil, keyEquivalent: "")
+            createItem.image = Self.createMenuIcon
+            createItem.submenu = createSubmenu
+            menu.addItem(createItem)
+        }
+
+        return menu.items.isEmpty ? nil : menu
     }
 
     private func makeMenuContext(for menuKind: FIMenuKind) -> MenuContext {
@@ -98,17 +121,6 @@ class FinderSync: FIFinderSync {
             ))
         }
 
-        if !context.createFileTargets.isEmpty {
-            menu.addItem(menuItem(
-                title: "新建文件",
-                selector: #selector(actionCreateBlankFile(_:))
-            ))
-            menu.addItem(menuItem(
-                title: "新建 txt 文件",
-                selector: #selector(actionCreateTxtFile(_:))
-            ))
-        }
-
         if !context.newWindowTargets.isEmpty {
             menu.addItem(menuItem(
                 title: "在新窗口打开",
@@ -116,6 +128,34 @@ class FinderSync: FIFinderSync {
             ))
         }
 
+        return menu
+    }
+
+    /// 构建 "MenuPlus新建" 子菜单；无可创建目标时返回 nil（顶层项随之隐藏）。
+    private func buildCreateSubmenu(context: MenuContext) -> NSMenu? {
+        guard !context.createFileTargets.isEmpty else { return nil }
+
+        let menu = NSMenu(title: "MenuPlus新建")
+        menu.addItem(menuItem(
+            title: "空白文件",
+            selector: #selector(actionCreateBlankFile(_:))
+        ))
+        menu.addItem(menuItem(
+            title: "文本文件",
+            selector: #selector(actionCreateTxtFile(_:))
+        ))
+        menu.addItem(.separator())
+
+        // FinderSync 菜单要跨进程序列化回 Finder，representedObject 不可靠，
+        // 用 tag 存 allCases 下标做模板映射。
+        for (index, template) in FileTemplate.allCases.enumerated() {
+            let item = menuItem(
+                title: template.menuTitle,
+                selector: #selector(actionCreateFromTemplate(_:))
+            )
+            item.tag = index
+            menu.addItem(item)
+        }
         return menu
     }
 
@@ -228,6 +268,18 @@ class FinderSync: FIFinderSync {
 
     @objc private func actionCreateTxtFile(_ sender: AnyObject?) {
         createFile(action: .createTxtFile)
+    }
+
+    @objc private func actionCreateFromTemplate(_ sender: AnyObject?) {
+        // tag 即 FileTemplate.allCases 下标（见 buildCreateSubmenu），越界直接忽略
+        let templates = FileTemplate.allCases
+        guard let item = sender as? NSMenuItem, templates.indices.contains(item.tag) else { return }
+        let template = templates[item.tag]
+
+        let paths = currentMenuContext.createFileTargets.map(\.path)
+        NSLog("[MenuPlus/FinderExt] 点击菜单：新建 %@，targets=%d", template.menuTitle, paths.count)
+        guard !paths.isEmpty else { return }
+        IPCClient.send(IPCRequest(action: .createFromTemplate, paths: paths, templateID: template.rawValue))
     }
 
     private func createFile(action: IPCAction) {

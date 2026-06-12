@@ -23,13 +23,16 @@ enum IPCExecutor {
             openInTerminal(paths: request.paths)
 
         case .createBlankFile:
-            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: nil, actionName: "新建文件")
+            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: nil, contents: nil, actionName: "新建文件")
 
         case .createTxtFile:
-            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: "txt", actionName: "新建 txt 文件")
+            createFiles(paths: request.paths, baseName: "新建文件", fileExtension: "txt", contents: nil, actionName: "新建 txt 文件")
 
         case .openInNewFinderWindow:
             openInNewFinderWindows(paths: request.paths)
+
+        case .createFromTemplate:
+            createFromTemplate(request)
         }
     }
 
@@ -134,10 +137,37 @@ enum IPCExecutor {
         }
     }
 
+    /// 按内置模板创建文件：解析 templateID → 取模板内容 → 走通用创建链路。
+    /// 模板内容在授权前一次性取出，资源缺失时不弹授权面板直接报错。
+    private static func createFromTemplate(_ request: IPCRequest) {
+        guard let templateID = request.templateID,
+              let template = FileTemplate(rawValue: templateID) else {
+            return FailurePresenter.present(
+                action: "新建文件",
+                reason: "无法识别的模板类型：\(request.templateID ?? "（缺失）")"
+            )
+        }
+
+        let actionName = "新建 \(template.menuTitle)"
+        do {
+            let contents = try TemplateProvider.content(for: template)
+            createFiles(
+                paths: request.paths,
+                baseName: template.baseName,
+                fileExtension: template.fileExtension,
+                contents: contents,
+                actionName: actionName
+            )
+        } catch {
+            FailurePresenter.present(action: actionName, reason: error.localizedDescription)
+        }
+    }
+
     private static func createFiles(
         paths: [String],
         baseName: String,
         fileExtension: String?,
+        contents: Data?,
         actionName: String
     ) {
         guard !paths.isEmpty else {
@@ -147,7 +177,7 @@ enum IPCExecutor {
         for path in paths {
             do {
                 try SecurityScopedDirectoryStore.withAccess(to: path, actionName: actionName) { directoryURL in
-                    try createFile(in: directoryURL, baseName: baseName, fileExtension: fileExtension)
+                    try createFile(in: directoryURL, baseName: baseName, fileExtension: fileExtension, contents: contents)
                 }
             } catch {
                 FailurePresenter.present(action: actionName, reason: error.localizedDescription)
@@ -158,7 +188,8 @@ enum IPCExecutor {
     private static func createFile(
         in directoryURL: URL,
         baseName: String,
-        fileExtension: String?
+        fileExtension: String?,
+        contents: Data?
     ) throws {
         let suffix = fileExtension.map { ".\($0)" } ?? ""
         var candidateName = "\(baseName)\(suffix)"
@@ -170,7 +201,7 @@ enum IPCExecutor {
         }
 
         let targetURL = directoryURL.appendingPathComponent(candidateName)
-        let created = FileManager.default.createFile(atPath: targetURL.path, contents: nil)
+        let created = FileManager.default.createFile(atPath: targetURL.path, contents: contents)
         guard created else {
             throw NSError(
                 domain: "MenuPlus.IPCExecutor",
