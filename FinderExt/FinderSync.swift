@@ -25,6 +25,24 @@ class FinderSync: FIFinderSync {
     private let controller = FIFinderSyncController.default()
     private var currentMenuContext = MenuContext()
 
+    /// 菜单项图标复用宿主 App 的应用图标：扩展自身没有 Assets，
+    /// 而 .appex 固定位于 MenuPlus.app/Contents/PlugIns/ 内，回溯三级即得宿主路径。
+    /// static 缓存避免每次弹出菜单都重新取图标。
+    private static let menuIcon: NSImage? = {
+        let hostAppURL = Bundle.main.bundleURL
+            .deletingLastPathComponent() // PlugIns
+            .deletingLastPathComponent() // Contents
+            .deletingLastPathComponent() // MenuPlus.app
+        guard hostAppURL.pathExtension == "app" else { return nil }
+        // icon(forFile:) 返回的实例可能被 Icon Services 缓存共享，copy 后再改尺寸避免污染共享对象。
+        guard let icon = NSWorkspace.shared.icon(forFile: hostAppURL.path).copy() as? NSImage else {
+            return nil
+        }
+        // NSMenuItem 不会自动缩放图标，需限定为菜单常规的 16x16 点。
+        icon.size = NSSize(width: 16, height: 16)
+        return icon
+    }()
+
     override init() {
         super.init()
 
@@ -53,6 +71,7 @@ class FinderSync: FIFinderSync {
 
         let menu = NSMenu(title: "")
         let parentItem = NSMenuItem(title: "MenuPlus", action: nil, keyEquivalent: "")
+        parentItem.image = Self.menuIcon
         parentItem.submenu = submenu
         menu.addItem(parentItem)
         return menu
