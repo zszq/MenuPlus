@@ -53,11 +53,7 @@ enum OpenWithAppStore {
     /// 刻意收批量而非单个：设置页 NSOpenPanel 允许多选，一次面板确认必须只算
     /// "一次 mutation"——若按单个循环调用，损坏自救的两段式确认会被同一手势内的
     /// 第二次调用直接击穿（用户还没看到提示，数据就被重置了）。
-    ///
-    /// - Parameter nameOverrides: 按标准化绝对路径键控的显示名覆盖表。
-    ///   默认空：用户手动添加仍取 Bundle 显示名；目前仅 seed 用它矫正个别
-    ///   Bundle 名对用户不可辨识的 App（如 VSCode 的 CFBundleName 是 "Code"）。
-    static func add(urls: [URL], nameOverrides: [String: String] = [:]) {
+    static func add(urls: [URL]) {
         guard !urls.isEmpty else {
             return
         }
@@ -71,8 +67,7 @@ enum OpenWithAppStore {
             guard !updated.contains(where: { $0.path == standardizedPath }) else {
                 continue
             }
-            let name = nameOverrides[standardizedPath] ?? displayName(for: url)
-            updated.append(OpenWithApp(name: name, path: standardizedPath))
+            updated.append(OpenWithApp(name: displayName(for: url), path: standardizedPath))
         }
 
         // 全部是重复项时不写：避免无意义的 UserDefaults + 共享 JSON 双写
@@ -123,9 +118,9 @@ enum OpenWithAppStore {
             return
         }
 
-        // VSCode 的 CFBundleName 是 "Code"，菜单显示「用 Code 打开」对用户不可辨识，
-        // seed 时显式覆盖为大众熟知的 "VSCode"；用户手动添加其他 App 仍走 Bundle 显示名。
-        add(urls: [vscodeURL], nameOverrides: [vscodeURL.standardizedFileURL.path: "VSCode"])
+        // seed 条目取名与手动添加完全一致（统一走 displayName(for:)）：VSCode 的
+        // CFBundleName 是 "Code"，菜单显示「用 Code 打开」——与用户删除后手动重加的结果统一。
+        add(urls: [vscodeURL])
         NSLog("[MenuPlus/MainApp] 首次启动已自动添加 VSCode 到打开方式：%@", vscodeURL.path)
     }
 
