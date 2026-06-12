@@ -18,6 +18,14 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<!-- Mac App Store 上传校验必填，缺失报 ITMS-90242 -->
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<!-- 仅使用系统加密（HTTPS 等），预先声明可免去每次提交的出口合规问卷 -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 zl. All rights reserved.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
