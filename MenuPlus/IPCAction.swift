@@ -32,43 +32,46 @@ extension IPCAction: CaseIterable {}
 /// "MenuPlus新建" 菜单的内置模板清单。
 /// 与 IPCAction 同受双端同步约定保护：扩展端用它生成菜单项，
 /// 主 App 端用 rawValue（即 IPCRequest.templateID）反查模板并提供文件内容。
+/// ⚠️ case 声明顺序即 allCases 顺序，直接决定"MenuPlus新建"菜单排序
+/// （Office 三件套在前，Markdown / RTF 殿后）；菜单 tag=下标由扩展同进程
+/// 构建并消费，重排安全；rawValue 不变，IPC 协议不受影响。
 enum FileTemplate: String, Codable, CaseIterable {
-    case markdown
-    case rtf
     case word
     case excel
     case powerpoint
+    case markdown
+    case rtf
 
     /// 右键菜单中显示的标题
     var menuTitle: String {
         switch self {
-        case .markdown: return "Markdown 文档"
-        case .rtf: return "RTF 文档"
         case .word: return "Word 文档"
         case .excel: return "Excel 工作簿"
         case .powerpoint: return "PowerPoint 演示文稿"
+        case .markdown: return "Markdown 文档"
+        case .rtf: return "RTF 文档"
         }
     }
 
     /// 创建文件的默认名（不含扩展名；重名时由主 App 创建逻辑递增 " 2/3…"）
     var baseName: String {
         switch self {
-        case .markdown: return "新建 Markdown 文档"
-        case .rtf: return "新建 RTF 文档"
         case .word: return "新建 Word 文档"
         case .excel: return "新建 Excel 工作簿"
         case .powerpoint: return "新建 PowerPoint 演示文稿"
+        case .markdown: return "新建 Markdown 文档"
+        case .rtf: return "新建 RTF 文档"
         }
     }
 
     /// 文件扩展名（不含点）
     var fileExtension: String {
         switch self {
-        case .markdown: return "md"
-        case .rtf: return "rtf"
         case .word: return "docx"
         case .excel: return "xlsx"
         case .powerpoint: return "pptx"
+        case .markdown: return "md"
+        case .rtf: return "rtf"
         }
     }
 }

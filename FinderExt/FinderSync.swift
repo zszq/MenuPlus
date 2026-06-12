@@ -162,8 +162,8 @@ class FinderSync: FIFinderSync {
             title: "文本文件",
             selector: #selector(actionCreateTxtFile(_:))
         ))
-        menu.addItem(.separator())
 
+        // 模板项紧随其后不加分隔线，整组按 allCases 声明顺序排列。
         // FinderSync 菜单要跨进程序列化回 Finder，representedObject 不可靠，
         // 用 tag 存 allCases 下标做模板映射。
         for (index, template) in FileTemplate.allCases.enumerated() {
