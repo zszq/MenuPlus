@@ -12,14 +12,8 @@ class FinderSync: FIFinderSync {
     private struct MenuContext {
         var terminalTargets: [URL] = []
         var generalTargets: [URL] = []
-        var selectedCreatableFolders: [URL] = []
-        var containerCreatableTarget: URL?
+        var createFileTargets: [URL] = []
         var newWindowTargets: [URL] = []
-    }
-
-    private enum CreateFileMode: Int {
-        case directSelection = 1
-        case authorizedContainer = 2
     }
 
     private let controller = FIFinderSyncController.default()
@@ -56,13 +50,6 @@ class FinderSync: FIFinderSync {
     override func endObservingDirectory(at url: URL) {}
     override func requestBadgeIdentifier(for url: URL) {}
 
-    override var toolbarItemName: String { "MenuPlus" }
-    override var toolbarItemToolTip: String { "MenuPlus 右键菜单扩展" }
-    override var toolbarItemImage: NSImage {
-        NSImage(systemSymbolName: "filemenu.and.cursorarrow", accessibilityDescription: nil)
-            ?? NSImage(named: NSImage.actionTemplateName)!
-    }
-
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
         let context = makeMenuContext(for: menuKind)
         currentMenuContext = context
@@ -81,8 +68,7 @@ class FinderSync: FIFinderSync {
         MenuContext(
             terminalTargets: terminalTargets(for: menuKind),
             generalTargets: generalTargets(for: menuKind),
-            selectedCreatableFolders: selectedCreatableFolders(),
-            containerCreatableTarget: containerCreatableTarget(for: menuKind),
+            createFileTargets: createFileTargets(for: menuKind),
             newWindowTargets: newWindowTargets(for: menuKind)
         )
     }
@@ -112,27 +98,14 @@ class FinderSync: FIFinderSync {
             ))
         }
 
-        if !context.selectedCreatableFolders.isEmpty {
+        if !context.createFileTargets.isEmpty {
             menu.addItem(menuItem(
                 title: "新建文件",
-                selector: #selector(actionCreateBlankFile(_:)),
-                tag: CreateFileMode.directSelection.rawValue
+                selector: #selector(actionCreateBlankFile(_:))
             ))
             menu.addItem(menuItem(
                 title: "新建 txt 文件",
-                selector: #selector(actionCreateTxtFile(_:)),
-                tag: CreateFileMode.directSelection.rawValue
-            ))
-        } else if context.containerCreatableTarget != nil {
-            menu.addItem(menuItem(
-                title: "新建文件",
-                selector: #selector(actionCreateBlankFile(_:)),
-                tag: CreateFileMode.authorizedContainer.rawValue
-            ))
-            menu.addItem(menuItem(
-                title: "新建 txt 文件",
-                selector: #selector(actionCreateTxtFile(_:)),
-                tag: CreateFileMode.authorizedContainer.rawValue
+                selector: #selector(actionCreateTxtFile(_:))
             ))
         }
 
@@ -146,16 +119,10 @@ class FinderSync: FIFinderSync {
         return menu
     }
 
-    private func menuItem(title: String, selector: Selector, tag: Int = 0) -> NSMenuItem {
+    private func menuItem(title: String, selector: Selector) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
         item.target = self
-        item.tag = tag
         return item
-    }
-
-    private func addSeparatorIfNeeded(to menu: NSMenu) {
-        guard !menu.items.isEmpty, menu.items.last?.isSeparatorItem == false else { return }
-        menu.addItem(.separator())
     }
 
     private func selectedItems() -> [URL] {
@@ -205,20 +172,21 @@ class FinderSync: FIFinderSync {
         return [target]
     }
 
-    /// 明确选中的文件夹可由扩展直接写；右键空白区域的当前目录则要交给主 App 走授权。
-    private func selectedCreatableFolders() -> [URL] {
-        guard allSelectedItemsAreFolders() else { return [] }
-        return selectedFolders()
-    }
+    /// 新建文件统一走 IPC 交给主 App 执行（扩展沙盒内直写不稳定，见 spec 第 5 节）：
+    /// 明确选中的文件夹直接作为目标；右键空白区域则取当前目录（不含 sidebar，
+    /// 避免在用户不可见的目录里创建文件）。
+    private func createFileTargets(for menuKind: FIMenuKind) -> [URL] {
+        if allSelectedItemsAreFolders() {
+            return selectedFolders()
+        }
 
-    private func containerCreatableTarget(for menuKind: FIMenuKind) -> URL? {
         guard menuKind == .contextualMenuForContainer,
               selectedItems().isEmpty,
               let target = targetedURL(),
               isActionableFolder(target) else {
-            return nil
+            return []
         }
-        return target
+        return [target]
     }
 
     private func newWindowTargets(for menuKind: FIMenuKind) -> [URL] {
@@ -255,28 +223,16 @@ class FinderSync: FIFinderSync {
     }
 
     @objc private func actionCreateBlankFile(_ sender: AnyObject?) {
-        createFile(from: sender, action: .createBlankFile, fileExtension: nil)
+        createFile(action: .createBlankFile)
     }
 
     @objc private func actionCreateTxtFile(_ sender: AnyObject?) {
-        createFile(from: sender, action: .createTxtFile, fileExtension: "txt")
+        createFile(action: .createTxtFile)
     }
 
-    private func createFile(from sender: AnyObject?, action: IPCAction, fileExtension: String?) {
-        let selectedFolders = currentMenuContext.selectedCreatableFolders
-        let containerTarget = currentMenuContext.containerCreatableTarget
-        let paths: [String]
-
-        if !selectedFolders.isEmpty {
-            paths = selectedFolders.map(\.path)
-            NSLog("[MenuPlus/FinderExt] 点击菜单：%@，mode=ipcSelection，targets=%d", action.rawValue, paths.count)
-        } else if let containerTarget {
-            paths = [containerTarget.path]
-            NSLog("[MenuPlus/FinderExt] 点击菜单：%@，mode=authorizedContainer", action.rawValue)
-        } else {
-            return
-        }
-
+    private func createFile(action: IPCAction) {
+        let paths = currentMenuContext.createFileTargets.map(\.path)
+        NSLog("[MenuPlus/FinderExt] 点击菜单：%@，targets=%d", action.rawValue, paths.count)
         guard !paths.isEmpty else { return }
         IPCClient.send(IPCRequest(action: action, paths: paths))
     }

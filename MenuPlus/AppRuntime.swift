@@ -220,16 +220,6 @@ final class AppRuntime: ObservableObject {
     }
 }
 
-extension UNUserNotificationCenter {
-    func notificationSettings() async -> UNNotificationSettings {
-        await withCheckedContinuation { continuation in
-            getNotificationSettings { settings in
-                continuation.resume(returning: settings)
-            }
-        }
-    }
-}
-
 enum SystemSettingsNavigator {
     static func openExtensionsFallback() {
         if let finderExtURL = URL(string: "x-apple.systempreferences:com.apple.ExtensionsPreferences?Finder"),
@@ -238,17 +228,6 @@ enum SystemSettingsNavigator {
         }
 
         if let fallback = URL(string: "x-apple.systempreferences:com.apple.preference.extensions") {
-            NSWorkspace.shared.open(fallback)
-        }
-    }
-
-    static func openAutomationPrivacy() {
-        if let automationURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"),
-           NSWorkspace.shared.open(automationURL) {
-            return
-        }
-
-        if let fallback = URL(string: "x-apple.systempreferences:com.apple.preference.security") {
             NSWorkspace.shared.open(fallback)
         }
     }

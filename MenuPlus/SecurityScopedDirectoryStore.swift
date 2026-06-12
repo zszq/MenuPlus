@@ -154,24 +154,44 @@ enum SecurityScopedDirectoryStore {
 
     private static func resolveBookmark(for bookmarkPath: String, bookmarkData: Data) throws -> URL? {
         var isStale = false
+        let url: URL
         do {
-            let url = try URL(
+            url = try URL(
                 resolvingBookmarkData: bookmarkData,
                 options: [.withSecurityScope],
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             )
-
-            if isStale {
-                NSLog("[MenuPlus/MainApp] bookmark 已过期，准备刷新：%@", bookmarkPath)
-                try saveBookmark(for: url)
-            }
-
-            return url
         } catch {
             NSLog("[MenuPlus/MainApp] 解析 bookmark 失败：%@, error=%@", bookmarkPath, error.localizedDescription)
             removeBookmark(for: bookmarkPath)
             return nil
+        }
+
+        if isStale {
+            refreshStaleBookmark(at: url, bookmarkPath: bookmarkPath)
+        }
+
+        return url
+    }
+
+    /// 刷新 stale bookmark 是 best-effort：URL 已解析成功，本次访问仍可用，
+    /// 刷新失败不能删除 bookmark（否则会误删仍有效的授权，迫使用户重新授权）。
+    /// 重建 bookmarkData 需要先激活 security scope，否则沙盒下创建会失败。
+    private static func refreshStaleBookmark(at url: URL, bookmarkPath: String) {
+        NSLog("[MenuPlus/MainApp] bookmark 已过期，准备刷新：%@", bookmarkPath)
+
+        let started = url.startAccessingSecurityScopedResource()
+        defer {
+            if started {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        do {
+            try saveBookmark(for: url)
+        } catch {
+            NSLog("[MenuPlus/MainApp] 刷新 stale bookmark 失败（保留旧 bookmark）：%@, error=%@", bookmarkPath, error.localizedDescription)
         }
     }
 

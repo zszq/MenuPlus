@@ -1,39 +1,12 @@
 import AppKit
 import UserNotifications
 
-enum FailureGuidance {
-    case automation(targetApp: String)
-}
-
 enum FailurePresenter {
-    static func present(action: String, reason: String, guidance: FailureGuidance? = nil) {
+    static func present(action: String, reason: String) {
         NSLog("[MenuPlus/MainApp] 执行失败: %@ - %@", action, reason)
 
-        Task { @MainActor in
-            if let guidance {
-                presentGuidanceAlert(for: guidance, action: action, reason: reason)
-            }
-
+        Task {
             await deliverNotificationIfAuthorized(action: action, reason: reason)
-        }
-    }
-
-    @MainActor
-    private static func presentGuidanceAlert(for guidance: FailureGuidance, action: String, reason: String) {
-        NSApp.activate(ignoringOtherApps: true)
-
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = "\(action)需要额外授权"
-
-        switch guidance {
-        case .automation(let targetApp):
-            alert.informativeText = "\(reason)\n\n请前往“系统设置 → 隐私与安全性 → 自动化”，允许 MenuPlus 控制\(targetApp)，然后回到 Finder 重试。"
-            alert.addButton(withTitle: "打开系统设置")
-            alert.addButton(withTitle: "知道了")
-            if alert.runModal() == .alertFirstButtonReturn {
-                SystemSettingsNavigator.openAutomationPrivacy()
-            }
         }
     }
 
