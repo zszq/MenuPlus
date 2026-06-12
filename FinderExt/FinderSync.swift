@@ -99,7 +99,8 @@ class FinderSync: FIFinderSync {
             generalTargets: generalTargets(for: menuKind),
             createFileTargets: createFileTargets(for: menuKind),
             newWindowTargets: newWindowTargets(for: menuKind),
-            // 每次右键都重读配置，保证设置页改动即时生效；文件极小，无性能问题
+            // 每次右键都经 load() 取最新配置，设置页改动即时生效；
+            // load 内部有 mtime+size 缓存，文件未变时不重复读盘解码（右键是阻塞 UI 的热路径）
             openWithApps: ExtensionConfigReader.load()
         )
     }
@@ -115,12 +116,8 @@ class FinderSync: FIFinderSync {
         }
 
         if !context.generalTargets.isEmpty {
-            menu.addItem(menuItem(
-                title: "在 VSCode 中打开",
-                selector: #selector(actionOpenInVSCode(_:))
-            ))
-
-            // 自定义"用 XX 打开"：紧跟内置的 VSCode 项之后。
+            // 自定义"用 XX 打开"（VSCode 不再硬编码：主 App 首次启动检测到已安装时
+            // 会自动 seed 进该列表，统一走通用机制）。
             // FinderSync 菜单跨进程序列化回 Finder，representedObject 不可靠，
             // 用 tag 存 openWithApps 下标做映射（同模板菜单的 tag 模式）。
             for (index, app) in context.openWithApps.enumerated() {
@@ -260,13 +257,6 @@ class FinderSync: FIFinderSync {
         NSLog("[MenuPlus/FinderExt] 点击菜单：在终端中打开，targets=%d", paths.count)
         guard !paths.isEmpty else { return }
         IPCClient.send(IPCRequest(action: .openInTerminal, paths: paths))
-    }
-
-    @objc private func actionOpenInVSCode(_ sender: AnyObject?) {
-        NSLog("[MenuPlus/FinderExt] 点击菜单：在 VSCode 中打开，targets=%d", currentMenuContext.generalTargets.count)
-        for url in currentMenuContext.generalTargets {
-            FinderSyncActions.openInVSCode(url: url)
-        }
     }
 
     @objc private func actionOpenWithApp(_ sender: AnyObject?) {

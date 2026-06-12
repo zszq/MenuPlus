@@ -15,6 +15,8 @@ enum OpenWithAppStore {
     private static let defaultsKey = "openWithApps"
     /// 损坏数据的备份 key：重置前把原始 Data 原样挪到这里，便于事后排查 / 未来迁移恢复。
     private static let corruptedBackupKey = "openWithApps.corruptedBackup"
+    /// 默认应用 seed 的一次性标记：置位后永不再 seed，保证用户删除后不会被自动加回。
+    private static let didSeedDefaultsKey = "didSeedDefaultOpenWithApps"
 
     /// 持久层的三态读取结果。
     /// 必须区分"无数据"与"有数据但解码失败"：后者若被当成空列表，
@@ -87,6 +89,38 @@ enum OpenWithAppStore {
 
         let removal = Set(paths)
         persist(current.filter { !removal.contains($0.path) })
+    }
+
+    /// App 启动时调用一次（须在 mirrorToSharedConfigFile 之前）：首次启动时
+    /// 把已安装的 VSCode 自动加入"打开方式"列表。
+    ///
+    /// 背景：旧版本扩展菜单里有硬编码的「在 VSCode 中打开」（扩展内直接走
+    /// vscode:// scheme，无需目录授权）；迁移到通用"用 XX 打开"机制后由这里接管。
+    /// 对升级用户的影响：菜单名变为 Bundle 显示名（如「用 Code 打开」），且首次
+    /// 使用需要目录授权——这是统一机制的已确认成本。
+    ///
+    /// seed 是静默操作：任何失败（未装 VSCode / 数据损坏）只记日志，不弹任何提示。
+    static func seedDefaultAppsIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: didSeedDefaultsKey) else {
+            return
+        }
+        // 先置位再 seed：后续步骤失败也不重试，确保用户删除后任何情况下都不会被自动加回
+        defaults.set(true, forKey: didSeedDefaultsKey)
+
+        // 损坏态跳过：seed 走不得"损坏数据两段式确认"（那会弹用户可见提示，违背静默约定）
+        if case .corrupted = load() {
+            NSLog("[MenuPlus/MainApp] openWithApps 数据损坏，跳过默认应用 seed")
+            return
+        }
+
+        guard let vscodeURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") else {
+            NSLog("[MenuPlus/MainApp] 未检测到 VSCode，跳过默认应用 seed")
+            return
+        }
+
+        add(urls: [vscodeURL])
+        NSLog("[MenuPlus/MainApp] 首次启动已自动添加 VSCode 到打开方式：%@", vscodeURL.path)
     }
 
     /// App 启动时调用一次：保证镜像 JSON 存在。

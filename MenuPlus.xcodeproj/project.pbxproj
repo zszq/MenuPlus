@@ -148,6 +148,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 78AC02992FB23B0A00E4789A /* Build configuration list for PBXNativeTarget "MenuPlus" */;
 			buildPhases = (
+				78C0C7E12FC4A1B200D17AC9 /* Check Consistency */,
 				78AC028A2FB23B0900E4789A /* Sources */,
 				78AC028B2FB23B0900E4789A /* Frameworks */,
 				78AC028C2FB23B0900E4789A /* Resources */,
@@ -206,6 +207,33 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		78C0C7E12FC4A1B200D17AC9 /* Check Consistency */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/scripts/check_consistency.sh",
+				"$(SRCROOT)/MenuPlus/IPCAction.swift",
+				"$(SRCROOT)/FinderExt/IPCAction.swift",
+				"$(SRCROOT)/MenuPlus/MenuPlus.entitlements",
+				"$(SRCROOT)/FinderExt/FinderExt.entitlements",
+			);
+			name = "Check Consistency";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "bash \"${SRCROOT}/scripts/check_consistency.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXResourcesBuildPhase section */
 		781F9DA42FC18FA700DF3CFC /* Resources */ = {

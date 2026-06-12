@@ -39,6 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 首次启动 seed 默认应用（VSCode 已安装时自动加入"打开方式"），
+        // 必须在镜像写之前执行，保证首启写出的共享 JSON 就包含 seed 结果
+        OpenWithAppStore.seedDefaultAppsIfNeeded()
+
         // 启动即镜像写一次共享配置 JSON：覆盖旧版本升级 / 容器被清的场景，
         // 否则 Finder 扩展会一直读不到配置而不显示"用 XX 打开"菜单项
         OpenWithAppStore.mirrorToSharedConfigFile()

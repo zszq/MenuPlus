@@ -90,96 +90,48 @@ struct ContentView: View {
                 }
                 .tag(SettingsTab.general)
 
-                VStack(alignment: .leading, spacing: 20) {
-                    GroupBox("目录授权") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("添加常用目录根目录，这些目录及其所有子目录都会直接复用授权，避免多次触发授权。")
-                                .foregroundColor(.secondary)
-
-                            HStack {
-                                Button("添加授权目录…") {
-                                    runtime.authorizeDirectoriesFromSettings()
-                                }
-                                Button("移除所选授权") {
-                                    runtime.removeAuthorizedDirectories(Array(selectedAuthorizedDirectories))
-                                    selectedAuthorizedDirectories.removeAll()
-                                }
-                                .disabled(selectedAuthorizedDirectories.isEmpty)
-
-                                Button("刷新列表") {
-                                    runtime.refreshAuthorizedDirectories()
-                                }
-                            }
-
-                            if runtime.authorizedDirectoryPaths.isEmpty {
-                                Text("暂未保存任何目录授权。")
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.vertical, 8)
-                            } else {
-                                List(runtime.authorizedDirectoryPaths, id: \.self, selection: $selectedAuthorizedDirectories) { path in
-                                    Text(path)
-                                        .textSelection(.enabled)
-                                        .padding(.vertical, 2)
-                                }
-                                .frame(minHeight: 320)
-                            }
-                        }
-                        .padding(8)
-                    }
-
-                    Spacer(minLength: 0)
+                ManagedListTab(
+                    title: "目录授权",
+                    description: "添加常用目录根目录，这些目录及其所有子目录都会直接复用授权，避免多次触发授权。",
+                    addButtonTitle: "添加授权目录…",
+                    addAction: { runtime.authorizeDirectoriesFromSettings() },
+                    removeButtonTitle: "移除所选授权",
+                    removeAction: { runtime.removeAuthorizedDirectories($0) },
+                    refreshButtonTitle: "刷新列表",
+                    refreshAction: { runtime.refreshAuthorizedDirectories() },
+                    emptyText: "暂未保存任何目录授权。",
+                    items: runtime.authorizedDirectoryPaths,
+                    itemID: \.self,
+                    selection: $selectedAuthorizedDirectories
+                ) { path in
+                    Text(path)
+                        .textSelection(.enabled)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(20)
                 .tabItem {
                     Label("目录授权", systemImage: "folder.badge.gearshape")
                 }
                 .tag(SettingsTab.directoryAuthorization)
 
-                VStack(alignment: .leading, spacing: 20) {
-                    GroupBox("打开方式") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("添加应用后，右键菜单的 MenuPlus 子菜单中会出现“用 XX 打开”，可对选中的文件或文件夹使用。")
-                                .foregroundColor(.secondary)
-
-                            HStack {
-                                Button("添加应用…") {
-                                    runtime.addOpenWithAppsFromSettings()
-                                }
-                                Button("移除所选") {
-                                    runtime.removeOpenWithApps(Array(selectedOpenWithAppPaths))
-                                    selectedOpenWithAppPaths.removeAll()
-                                }
-                                .disabled(selectedOpenWithAppPaths.isEmpty)
-                            }
-
-                            if runtime.openWithApps.isEmpty {
-                                Text("暂未添加任何打开方式。")
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.vertical, 8)
-                            } else {
-                                List(runtime.openWithApps, id: \.path, selection: $selectedOpenWithAppPaths) { app in
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(app.name)
-                                        Text(app.path)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                            .textSelection(.enabled)
-                                    }
-                                    .padding(.vertical, 2)
-                                }
-                                .frame(minHeight: 320)
-                            }
-                        }
-                        .padding(8)
+                ManagedListTab(
+                    title: "打开方式",
+                    description: "添加应用后，右键菜单的 MenuPlus 子菜单中会出现“用 XX 打开”，可对选中的文件或文件夹使用。",
+                    addButtonTitle: "添加应用…",
+                    addAction: { runtime.addOpenWithAppsFromSettings() },
+                    removeButtonTitle: "移除所选",
+                    removeAction: { runtime.removeOpenWithApps($0) },
+                    emptyText: "暂未添加任何打开方式。",
+                    items: runtime.openWithApps,
+                    itemID: \.path,
+                    selection: $selectedOpenWithAppPaths
+                ) { app in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(app.name)
+                        Text(app.path)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .textSelection(.enabled)
                     }
-
-                    Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(20)
                 .tabItem {
                     Label("打开方式", systemImage: "arrow.up.forward.app")
                 }
@@ -192,13 +144,6 @@ struct ContentView: View {
         .onAppear {
             refreshLaunchAtLoginState()
             runtime.refreshStatus()
-        }
-        .onChange(of: runtime.authorizedDirectoryPaths) { newPaths in
-            selectedAuthorizedDirectories.formIntersection(Set(newPaths))
-        }
-        .onChange(of: runtime.openWithApps) { newApps in
-            // 列表刷新后清掉已不存在的选中项，避免"移除所选"误删
-            selectedOpenWithAppPaths.formIntersection(Set(newApps.map(\.path)))
         }
     }
 
@@ -354,6 +299,79 @@ struct ContentView: View {
             refreshLaunchAtLoginState()
         } catch {
             launchAtLogin = !isEnabled
+        }
+    }
+}
+
+/// 设置页"受管列表" Tab 的通用骨架：GroupBox + 说明文字 + 添加/移除（可选刷新）按钮 +
+/// 空态文案 / 多选 List。「目录授权」「打开方式」两个 Tab 结构完全一致，
+/// 收敛到这里避免后续改样式/交互时两处漂移。
+/// 选中项以 String（itemID 取值）标识，与两个调用方的 Set<String> selection 对齐。
+private struct ManagedListTab<Item: Equatable, RowContent: View>: View {
+    let title: String
+    let description: String
+    let addButtonTitle: String
+    let addAction: () -> Void
+    let removeButtonTitle: String
+    /// 参数为当前选中的 itemID 集合（已转为数组）
+    let removeAction: ([String]) -> Void
+    /// 刷新按钮可选：目录授权需要（bookmark 可能被运行时授权链路改动），打开方式不需要
+    var refreshButtonTitle: String? = nil
+    var refreshAction: (() -> Void)? = nil
+    let emptyText: String
+    let items: [Item]
+    let itemID: KeyPath<Item, String>
+    @Binding var selection: Set<String>
+    @ViewBuilder let rowContent: (Item) -> RowContent
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            GroupBox(title) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(description)
+                        .foregroundColor(.secondary)
+
+                    HStack {
+                        Button(addButtonTitle, action: addAction)
+                        Button(removeButtonTitle) {
+                            removeAction(Array(selection))
+                            selection.removeAll()
+                        }
+                        .disabled(selection.isEmpty)
+
+                        if let refreshButtonTitle, let refreshAction {
+                            Button(refreshButtonTitle, action: refreshAction)
+                        }
+                    }
+
+                    if items.isEmpty {
+                        Text(emptyText)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 8)
+                    } else {
+                        List(items, id: itemID, selection: $selection) { item in
+                            rowContent(item)
+                                .padding(.vertical, 2)
+                        }
+                        .frame(minHeight: 320)
+                    }
+                }
+                .padding(8)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(20)
+        // 列表刷新后清掉已不存在的选中项，避免"移除所选"误删。
+        // onAppear 兜底：TabView 非当前 Tab 不在视图树里，期间发生的列表变更
+        // 不会触发 onChange，切回本 Tab 时需补一次清理。
+        .onChange(of: items) { newItems in
+            selection.formIntersection(Set(newItems.map { $0[keyPath: itemID] }))
+        }
+        .onAppear {
+            selection.formIntersection(Set(items.map { $0[keyPath: itemID] }))
         }
     }
 }

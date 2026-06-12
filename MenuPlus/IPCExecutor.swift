@@ -41,104 +41,83 @@ enum IPCExecutor {
         }
     }
 
-    // MARK: - 具体动作
+    // MARK: - 共享编排：逐路径授权 + 统一失败提示
 
-    private static func openInTerminal(paths: [String]) {
+    /// 目录类动作的共用编排骨架：guard 空路径 → 逐路径解析授权目录 →
+    /// withAccess → 失败统一走 FailurePresenter。四个动作（在终端打开 /
+    /// 在新窗口打开 / 新建文件 / 用 XX 打开）此前各自复制这段样板，收敛到这里
+    /// 保证错误处理矩阵（spec § 8）只需维护一份。
+    ///
+    /// makeOperation 对每个原始路径返回 (需授权的目录, scope 激活后执行的动作)；
+    /// 返回 nil 表示该路径无法处理（失败提示由 makeOperation 自行 present），跳过继续下一条。
+    /// 拆成"先算 scope 再执行"两步，是因为 openWithApp 的授权目录与目标不同
+    /// （文件/文件包 → 授权父目录），必须在 withAccess 之前算好。
+    private static func forEachPathWithAccess(
+        paths: [String],
+        actionName: String,
+        makeOperation: (String) -> (scopePath: String, perform: (URL) throws -> Void)?
+    ) {
         guard !paths.isEmpty else {
-            return FailurePresenter.present(action: "在终端打开", reason: "缺少目标路径")
+            return FailurePresenter.present(action: actionName, reason: "缺少目标路径")
         }
 
         for path in paths {
+            guard let operation = makeOperation(path) else { continue }
             do {
-                try SecurityScopedDirectoryStore.withAccess(to: path, actionName: "在终端打开") { directoryURL in
-                    try openTerminal(directoryURL: directoryURL)
-                }
+                try SecurityScopedDirectoryStore.withAccess(
+                    to: operation.scopePath,
+                    actionName: actionName,
+                    perform: operation.perform
+                )
             } catch {
-                FailurePresenter.present(action: "在终端打开", reason: error.localizedDescription)
+                FailurePresenter.present(action: actionName, reason: error.localizedDescription)
             }
         }
     }
 
-    private static func openTerminal(directoryURL: URL) throws {
+    /// 简化重载：动作目标本身就是要授权的目录（在终端打开 / 新窗口 / 新建文件场景）。
+    private static func forEachPathWithAccess(
+        paths: [String],
+        actionName: String,
+        perform: @escaping (URL) throws -> Void
+    ) {
+        forEachPathWithAccess(paths: paths, actionName: actionName) { path in
+            (scopePath: path, perform: perform)
+        }
+    }
+
+    // MARK: - 具体动作
+
+    private static func openInTerminal(paths: [String]) {
+        // Terminal 固定取系统路径，不按 bundle id 查询，避免被第三方终端顶替
         let terminalURL = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
-        guard FileManager.default.fileExists(atPath: terminalURL.path) else {
-            throw NSError(
-                domain: "MenuPlus.IPCExecutor",
-                code: 10,
-                userInfo: [NSLocalizedDescriptionKey: "未找到 Terminal.app"]
-            )
-        }
 
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-
-        let semaphore = DispatchSemaphore(value: 0)
-        var completionError: Error?
-
-        NSWorkspace.shared.open(
-            [directoryURL],
-            withApplicationAt: terminalURL,
-            configuration: configuration
-        ) { _, error in
-            completionError = error
-            semaphore.signal()
-        }
-
-        semaphore.wait()
-
-        if let completionError {
-            throw completionError
+        forEachPathWithAccess(paths: paths, actionName: "在终端打开") { directoryURL in
+            guard FileManager.default.fileExists(atPath: terminalURL.path) else {
+                throw NSError(
+                    domain: "MenuPlus.IPCExecutor",
+                    code: 10,
+                    userInfo: [NSLocalizedDescriptionKey: "未找到 Terminal.app"]
+                )
+            }
+            try open(targetURL: directoryURL, withApplicationAt: terminalURL)
         }
     }
 
     private static func openInNewFinderWindows(paths: [String]) {
-        guard !paths.isEmpty else {
-            return FailurePresenter.present(action: "在新窗口打开", reason: "缺少目标路径")
-        }
+        forEachPathWithAccess(paths: paths, actionName: "在新窗口打开") { directoryURL in
+            let finderAppURL =
+                NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder")
+                ?? URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
 
-        for path in paths {
-            do {
-                try SecurityScopedDirectoryStore.withAccess(to: path, actionName: "在新窗口打开") { directoryURL in
-                    try openFinderWindow(directoryURL: directoryURL)
-                }
-            } catch {
-                FailurePresenter.present(action: "在新窗口打开", reason: error.localizedDescription)
+            guard FileManager.default.fileExists(atPath: finderAppURL.path) else {
+                throw NSError(
+                    domain: "MenuPlus.IPCExecutor",
+                    code: 11,
+                    userInfo: [NSLocalizedDescriptionKey: "未找到 Finder.app"]
+                )
             }
-        }
-    }
-
-    private static func openFinderWindow(directoryURL: URL) throws {
-        let finderAppURL =
-            NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder")
-            ?? URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
-
-        guard FileManager.default.fileExists(atPath: finderAppURL.path) else {
-            throw NSError(
-                domain: "MenuPlus.IPCExecutor",
-                code: 11,
-                userInfo: [NSLocalizedDescriptionKey: "未找到 Finder.app"]
-            )
-        }
-
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-
-        let semaphore = DispatchSemaphore(value: 0)
-        var completionError: Error?
-
-        NSWorkspace.shared.open(
-            [directoryURL],
-            withApplicationAt: finderAppURL,
-            configuration: configuration
-        ) { _, error in
-            completionError = error
-            semaphore.signal()
-        }
-
-        semaphore.wait()
-
-        if let completionError {
-            throw completionError
+            try open(targetURL: directoryURL, withApplicationAt: finderAppURL)
         }
     }
 
@@ -158,48 +137,41 @@ enum IPCExecutor {
             )
         }
 
-        guard !paths.isEmpty else {
-            return FailurePresenter.present(action: actionName, reason: "缺少目标路径")
-        }
-
-        for path in paths {
+        forEachPathWithAccess(paths: paths, actionName: actionName) { path in
             // 扩展传来的纯字符串路径丢失了"是否目录"信息，按真实文件系统判断
-            var isDirectory: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else {
+            var isDirectoryFlag: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectoryFlag) else {
                 FailurePresenter.present(action: actionName, reason: "目标不存在：\(path)")
-                continue
+                return nil
             }
+            let isDirectory = isDirectoryFlag.boolValue
 
             // 文件包（.rtfd/.key/.pages 等）虽是目录，但授权面板（仅可选目录）里
             // 包显示为文件、无法被选中，授权链路会卡死；必须按文件对待，授权其父目录
-            let isPackage = isDirectory.boolValue && NSWorkspace.shared.isFilePackage(atPath: path)
-            let scopeIsTargetItself = isDirectory.boolValue && !isPackage
+            let isPackage = isDirectory && NSWorkspace.shared.isFilePackage(atPath: path)
+            let scopeIsTargetItself = isDirectory && !isPackage
 
             let standardizedTarget = URL(fileURLWithPath: path).standardizedFileURL
             let scopeDirectoryPath = scopeIsTargetItself
                 ? standardizedTarget.path
                 : standardizedTarget.deletingLastPathComponent().path
 
-            do {
-                try SecurityScopedDirectoryStore.withAccess(to: scopeDirectoryPath, actionName: actionName) { directoryURL in
-                    // scopedURL 拼子路径全程 isDirectory: true，文件/包目标需在 scope 目录下
-                    // 自行拼最后一段，isDirectory 取真实文件系统结果，避免被错判
-                    let targetURL = scopeIsTargetItself
-                        ? directoryURL
-                        : directoryURL.appendingPathComponent(
-                            standardizedTarget.lastPathComponent,
-                            isDirectory: isDirectory.boolValue
-                        )
-                    try open(targetURL: targetURL, withApplicationAt: appURL)
-                }
-            } catch {
-                FailurePresenter.present(action: actionName, reason: error.localizedDescription)
-            }
+            return (scopePath: scopeDirectoryPath, perform: { directoryURL in
+                // scopedURL 拼子路径全程 isDirectory: true，文件/包目标需在 scope 目录下
+                // 自行拼最后一段，isDirectory 取真实文件系统结果，避免被错判
+                let targetURL = scopeIsTargetItself
+                    ? directoryURL
+                    : directoryURL.appendingPathComponent(
+                        standardizedTarget.lastPathComponent,
+                        isDirectory: isDirectory
+                    )
+                try open(targetURL: targetURL, withApplicationAt: appURL)
+            })
         }
     }
 
-    /// 信号量等待 completion 的模式与 openTerminal 一致：
-    /// withAccess 的 security scope 在闭包返回时即关闭，必须等 open 结束再返回。
+    /// 全仓唯一的 NSWorkspace.open + 信号量等待实现（终端 / Finder 新窗口 / 自定义应用共用）：
+    /// withAccess 的 security scope 在闭包返回时即关闭，必须等 open 的 completion 结束再返回。
     private static func open(targetURL: URL, withApplicationAt appURL: URL) throws {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
@@ -256,18 +228,8 @@ enum IPCExecutor {
         contents: Data?,
         actionName: String
     ) {
-        guard !paths.isEmpty else {
-            return FailurePresenter.present(action: actionName, reason: "缺少目标路径")
-        }
-
-        for path in paths {
-            do {
-                try SecurityScopedDirectoryStore.withAccess(to: path, actionName: actionName) { directoryURL in
-                    try createFile(in: directoryURL, baseName: baseName, fileExtension: fileExtension, contents: contents)
-                }
-            } catch {
-                FailurePresenter.present(action: actionName, reason: error.localizedDescription)
-            }
+        forEachPathWithAccess(paths: paths, actionName: actionName) { directoryURL in
+            try createFile(in: directoryURL, baseName: baseName, fileExtension: fileExtension, contents: contents)
         }
     }
 
