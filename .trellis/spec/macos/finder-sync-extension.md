@@ -178,6 +178,24 @@ FIFinderSyncController.showExtensionManagementInterface()
 
 > **Warning**: 构建产物路径改变（例如从 `/Applications` 切到 Xcode DerivedData）后，PluginKit 可能把新 bundle 视为新的扩展实例。不要假设“以前启用过一次”就永远有效。
 
+### 4.2 调试工作流：多份 .appex 副本与 PluginKit“选举”
+
+**症状**：改了扩展代码，Xcode 编译运行后右键菜单行为没有任何变化（新菜单项 / 图标不出现）。
+
+**原因**：磁盘上存在多份相同 bundle id 的 `.appex`（DerivedData 一份、`/Applications` 一份）时，PluginKit 只会“选举”一份生效，且偏向 `/Applications` 等正式安装位置——Xcode 刚编译的副本经常落选。此外 Finder 进程加载扩展后一直驻留，磁盘上的 `.appex` 更新了也不会自动重载。
+
+**验证**：`pluginkit -m -v | grep -i finderext` — 带 `+` 号的那行才是当前生效的副本，注意看它的路径和注册时间。
+
+**正确调试循环**（只要 `/Applications` 存在同名 App 就必须三步全做）：
+
+```bash
+xcodebuild -project MenuPlus.xcodeproj -scheme MenuPlus -configuration Debug build
+ditto <DerivedData>/Build/Products/Debug/MenuPlus.app /Applications/MenuPlus.app
+killall Finder   # 让 Finder 重新加载扩展
+```
+
+**预防**：开发期要么删掉 `/Applications` 副本只从 Xcode 运行，要么每次改扩展代码后执行上面三步同步。
+
 ---
 
 ## 5. 目标选择逻辑
@@ -318,3 +336,40 @@ Settings { ContentView() }
 4. 在 `FinderExt/FinderSync.swift` 的 `buildSubmenu()` 加菜单项 + `@objc` handler
 5. Handler 调用 `IPCClient.send(IPCRequest(action: .newAction, paths: [...]))`
 6. 如果动作涉及 Finder 空白区域写入，再补 `SecurityScopedDirectoryStore` 授权链路
+
+---
+
+## 10. 菜单项图标：复用宿主 App 图标
+
+### Convention: 菜单图标取自宿主 App，而非给扩展添加资源
+
+**What**：右键菜单 "MenuPlus" 父菜单项的图标从宿主 App bundle 动态获取，FinderExt target 不放任何图标资源。
+
+**Why**：图标永远与 App 图标一致，改图标无需同步两处资源，也不用改动脆弱的 `project.pbxproj`。`.appex` 固定位于 `MenuPlus.app/Contents/PlugIns/` 内，从 `Bundle.main.bundleURL` 回溯三级即得宿主 `.app` 路径，可靠性有保证。
+
+**Example**（`FinderExt/FinderSync.swift`）：
+
+```swift
+private static let menuIcon: NSImage? = {
+    let hostAppURL = Bundle.main.bundleURL
+        .deletingLastPathComponent() // PlugIns
+        .deletingLastPathComponent() // Contents
+        .deletingLastPathComponent() // MenuPlus.app
+    guard hostAppURL.pathExtension == "app" else { return nil }
+    // icon(forFile:) 返回的实例可能被 Icon Services 缓存共享，copy 后再改尺寸避免污染共享对象
+    guard let icon = NSWorkspace.shared.icon(forFile: hostAppURL.path).copy() as? NSImage else {
+        return nil
+    }
+    icon.size = NSSize(width: 16, height: 16)  // NSMenuItem 不自动缩放图标
+    return icon
+}()
+```
+
+**关键 gotcha**：
+
+> **Warning**: `NSWorkspace.icon(forFile:)` 返回的 `NSImage` 可能是 Icon Services 的共享缓存实例。**直接修改其 `size` 会污染全局共享对象**，必须先 `copy()` 再改尺寸。
+
+- 菜单图标尺寸用 16x16 点（菜单常规尺寸），保留多分辨率 representation 不影响 Retina 显示。
+- 用 `static let` 闭包初始化做缓存：线程安全、惰性，避免每次弹菜单重复取图标。
+- 路径回溯做 `pathExtension == "app"` 兜底校验，失败时返回 `nil`（不设图标），不能崩溃。
+- `NSWorkspace.icon(forFile:)` 仅读取 Icon Services，沙盒内可直接使用，无需走 IPC。
