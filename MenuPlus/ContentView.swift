@@ -27,71 +27,25 @@ struct ContentView: View {
     @State private var selectedOpenWithAppPaths = Set<String>()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            TabView(selection: $selectedTab) {
-                ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        settingsHeader()
+        // 系统设置风格：默认 TabView 在 macOS 上会画一个大边框盒，与内部
+        // GroupBox/List 形成多层嵌套；改为顶部分段切换 + 无边框内容区
+        VStack(spacing: 0) {
+            Picker("页面", selection: $selectedTab) {
+                Text("基础设置").tag(SettingsTab.general)
+                Text("目录授权").tag(SettingsTab.directoryAuthorization)
+                Text("打开方式").tag(SettingsTab.openWith)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 380)
+            .padding(.top, 16)
+            .padding(.bottom, 4)
 
-                        GroupBox("通用") {
-                            VStack(alignment: .leading, spacing: 12) {
-                                menuBarIconRow()
-
-                                launchAtLoginRow()
-
-                                statusRow(
-                                    title: "Finder 扩展",
-                                    value: runtime.isFinderExtensionEnabled ? "已启用" : "未启用",
-                                    color: runtime.isFinderExtensionEnabled ? .green : .orange,
-                                    buttonTitle: "打开扩展设置"
-                                ) {
-                                    runtime.openFinderExtensionManagement()
-                                }
-
-                                statusRow(
-                                    title: "通知权限",
-                                    value: notificationStatusText(runtime.notificationStatus),
-                                    color: notificationStatusColor(runtime.notificationStatus),
-                                    buttonTitle: notificationButtonTitle(runtime.notificationStatus)
-                                ) {
-                                    if runtime.notificationStatus == .notDetermined {
-                                        runtime.requestNotificationAuthorization()
-                                    } else {
-                                        SystemSettingsNavigator.openNotificationsPrivacy()
-                                    }
-                                }
-
-                                statusRow(
-                                    title: "当前运行位置",
-                                    value: runtime.bundleLocationSummary,
-                                    color: runtime.bundleInstallState == .applications ? .green : .orange,
-                                    buttonTitle: "显示当前 App…"
-                                ) {
-                                    runtime.revealCurrentAppInFinder()
-                                }
-                            }
-                            .padding(8)
-                        }
-
-                        HStack {
-                            Spacer()
-                            Text("版本 \(Bundle.main.shortVersion)")
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                        }
-
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                }
-                .tabItem {
-                    Label("基础设置", systemImage: "slider.horizontal.3")
-                }
-                .tag(SettingsTab.general)
-
+            switch selectedTab {
+            case .general:
+                generalTab()
+            case .directoryAuthorization:
                 ManagedListTab(
-                    title: "目录授权",
                     description: "添加常用目录根目录，这些目录及其所有子目录都会直接复用授权，避免多次触发授权。",
                     addButtonTitle: "添加授权目录…",
                     addAction: { runtime.authorizeDirectoriesFromSettings() },
@@ -107,13 +61,8 @@ struct ContentView: View {
                     Text(path)
                         .textSelection(.enabled)
                 }
-                .tabItem {
-                    Label("目录授权", systemImage: "folder.badge.gearshape")
-                }
-                .tag(SettingsTab.directoryAuthorization)
-
+            case .openWith:
                 ManagedListTab(
-                    title: "打开方式",
                     description: "添加应用后，右键菜单的 MenuPlus 子菜单中会出现“用 XX 打开”，可对选中的文件或文件夹使用。",
                     addButtonTitle: "添加应用…",
                     addAction: { runtime.addOpenWithAppsFromSettings() },
@@ -132,19 +81,65 @@ struct ContentView: View {
                             .textSelection(.enabled)
                     }
                 }
-                .tabItem {
-                    Label("打开方式", systemImage: "arrow.up.forward.app")
-                }
-                .tag(SettingsTab.openWith)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(16)
         .frame(minWidth: 620, minHeight: 520)
         .onAppear {
             refreshLaunchAtLoginState()
             runtime.refreshStatus()
         }
+    }
+
+    private func generalTab() -> some View {
+        // grouped Form 自带滚动与圆角分组底色，替代原 GroupBox；
+        // 隐藏滚动区自身底色，使其与窗口背景融合，只留 Section 分组底色。
+        // header 用第一个 Section 的 header 承载：Section header 没有分组底框，
+        // 且渲染时与分组圆角框左缘天然对齐，无需手调 padding，永不漂移
+        Form {
+            Section {
+                menuBarIconRow()
+
+                launchAtLoginRow()
+            } header: {
+                settingsHeader()
+                    .padding(.bottom, 8)
+            }
+
+            Section {
+                statusRow(
+                    title: "Finder 扩展",
+                    value: runtime.isFinderExtensionEnabled ? "已启用" : "未启用",
+                    color: runtime.isFinderExtensionEnabled ? .green : .orange,
+                    buttonTitle: "打开扩展设置"
+                ) {
+                    runtime.openFinderExtensionManagement()
+                }
+
+                statusRow(
+                    title: "通知权限",
+                    value: notificationStatusText(runtime.notificationStatus),
+                    color: notificationStatusColor(runtime.notificationStatus),
+                    buttonTitle: notificationButtonTitle(runtime.notificationStatus)
+                ) {
+                    if runtime.notificationStatus == .notDetermined {
+                        runtime.requestNotificationAuthorization()
+                    } else {
+                        SystemSettingsNavigator.openNotificationsPrivacy()
+                    }
+                }
+
+                statusRow(
+                    title: "当前运行位置",
+                    value: runtime.bundleLocationSummary,
+                    color: runtime.bundleInstallState == .applications ? .green : .orange,
+                    buttonTitle: "显示当前 App…"
+                ) {
+                    runtime.revealCurrentAppInFinder()
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
     }
 
     private func settingsHeader() -> some View {
@@ -157,9 +152,13 @@ struct ContentView: View {
                 .shadow(color: Color.black.opacity(0.16), radius: 8, y: 3)
 
             VStack(alignment: .leading, spacing: 4) {
+                // 本视图作为 Section header 渲染，系统默认会套 secondary 前景色
+                // 和小字号；标题需显式声明 primary 与字号保证可读，版本号保持 secondary
                 Text("MenuPlus")
                     .font(.title2.bold())
+                    .foregroundColor(.primary)
                 Text("版本 \(Bundle.main.shortVersion)")
+                    .font(.body)
                     .foregroundColor(.secondary)
             }
 
@@ -303,12 +302,11 @@ struct ContentView: View {
     }
 }
 
-/// 设置页"受管列表" Tab 的通用骨架：GroupBox + 说明文字 + 添加/移除（可选刷新）按钮 +
+/// 设置页"受管列表" Tab 的通用骨架：说明文字 + 添加/移除（可选刷新）按钮 +
 /// 空态文案 / 多选 List。「目录授权」「打开方式」两个 Tab 结构完全一致，
 /// 收敛到这里避免后续改样式/交互时两处漂移。
 /// 选中项以 String（itemID 取值）标识，与两个调用方的 Set<String> selection 对齐。
 private struct ManagedListTab<Item: Equatable, RowContent: View>: View {
-    let title: String
     let description: String
     let addButtonTitle: String
     let addAction: () -> Void
@@ -325,48 +323,50 @@ private struct ManagedListTab<Item: Equatable, RowContent: View>: View {
     @ViewBuilder let rowContent: (Item) -> RowContent
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            GroupBox(title) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(description)
-                        .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            Text(description)
+                .foregroundColor(.secondary)
 
-                    HStack {
-                        Button(addButtonTitle, action: addAction)
-                        Button(removeButtonTitle) {
-                            removeAction(Array(selection))
-                            selection.removeAll()
-                        }
-                        .disabled(selection.isEmpty)
-
-                        if let refreshButtonTitle, let refreshAction {
-                            Button(refreshButtonTitle, action: refreshAction)
-                        }
-                    }
-
-                    if items.isEmpty {
-                        Text(emptyText)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 8)
-                    } else {
-                        List(items, id: itemID, selection: $selection) { item in
-                            rowContent(item)
-                                .padding(.vertical, 2)
-                        }
-                        .frame(minHeight: 320)
-                    }
+            // 操作按钮放在说明与列表之间：先看说明、再操作、列表占满剩余空间
+            HStack {
+                Button(addButtonTitle, action: addAction)
+                Button(removeButtonTitle) {
+                    removeAction(Array(selection))
+                    selection.removeAll()
                 }
-                .padding(8)
+                .disabled(selection.isEmpty)
+
+                if let refreshButtonTitle, let refreshAction {
+                    Button(refreshButtonTitle, action: refreshAction)
+                }
             }
 
-            Spacer(minLength: 0)
+            // 列表只保留一层圆角描边容器，空态复用同一容器避免切换时跳动
+            Group {
+                if items.isEmpty {
+                    Text(emptyText)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(nsColor: .textBackgroundColor))
+                } else {
+                    List(items, id: itemID, selection: $selection) { item in
+                        rowContent(item)
+                            .padding(.vertical, 2)
+                    }
+                    .listStyle(.inset)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(Color(nsColor: .separatorColor))
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(20)
         // 列表刷新后清掉已不存在的选中项，避免"移除所选"误删。
-        // onAppear 兜底：TabView 非当前 Tab 不在视图树里，期间发生的列表变更
-        // 不会触发 onChange，切回本 Tab 时需补一次清理。
+        // onAppear 兜底：分段切换用 switch-case 重建视图，非当前页不在视图树里，
+        // 期间发生的列表变更不会触发 onChange，切回本页时需补一次清理。
         .onChange(of: items) { newItems in
             selection.formIntersection(Set(newItems.map { $0[keyPath: itemID] }))
         }
