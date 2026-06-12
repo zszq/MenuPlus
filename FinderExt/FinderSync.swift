@@ -39,63 +39,6 @@ class FinderSync: FIFinderSync {
         return icon
     }()
 
-    /// "MenuPlus新建" 顶层菜单图标：SF Symbol plus.square，延续"扩展不放图标资源"的约定。
-    /// 必须预先光栅化成位图再交给 NSMenuItem：FinderSync 菜单要跨进程序列化给 Finder 渲染，
-    /// symbol 原始图像（含绘制闭包/矢量描述）序列化后可能丢内容，位图最可靠。
-    /// 同时 isTemplate = true 让菜单按深/浅色自动着色——这是深色模式下图标跟随文字变色的关键。
-    /// 任一步失败返回 nil（不设图标），不崩溃。
-    private static let createMenuIcon: NSImage? = {
-        // pointSize 取 14：在 16x16 点的菜单图标槽里留出边距，线条不贴边、不发糊
-        guard let symbol = NSImage(systemSymbolName: "plus.square", accessibilityDescription: "新建文件")?
-            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)) else {
-            return nil
-        }
-
-        let targetSize = NSSize(width: 16, height: 16)
-        let image = NSImage(size: targetSize)
-
-        // 1x（16px）与 2x（32px）两个 rep 都要，保证 Retina 下清晰
-        for scale in [1, 2] {
-            let pixels = 16 * scale
-            guard let rep = NSBitmapImageRep(
-                bitmapDataPlanes: nil,
-                pixelsWide: pixels,
-                pixelsHigh: pixels,
-                bitsPerSample: 8,
-                samplesPerPixel: 4,
-                hasAlpha: true,
-                isPlanar: false,
-                colorSpaceName: .deviceRGB,
-                bytesPerRow: 0,
-                bitsPerPixel: 0
-            ) else { return nil }
-            // 点尺寸固定 16x16，像素更高的 rep 即成为 2x representation
-            rep.size = targetSize
-
-            // 不用 NSImage(size:flipped:drawingHandler:)：其绘制闭包无法跨进程执行，
-            // 序列化给 Finder 后可能丢内容；这里显式把 symbol 画进 bitmap rep
-            guard let context = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
-            NSGraphicsContext.saveGraphicsState()
-            NSGraphicsContext.current = context
-            let symbolSize = symbol.size
-            // 在 16x16 点的画布内居中
-            let origin = NSPoint(
-                x: (targetSize.width - symbolSize.width) / 2,
-                y: (targetSize.height - symbolSize.height) / 2
-            )
-            symbol.draw(in: NSRect(origin: origin, size: symbolSize))
-            context.flushGraphics()
-            NSGraphicsContext.restoreGraphicsState()
-
-            image.addRepresentation(rep)
-        }
-
-        // 模板图像：菜单绘制时按当前外观（深/浅色）自动着色
-        image.isTemplate = true
-        image.accessibilityDescription = "新建文件"
-        return image
-    }()
-
     override init() {
         super.init()
 
@@ -131,7 +74,8 @@ class FinderSync: FIFinderSync {
         // "MenuPlus新建"：与 "MenuPlus" 同级的新建模板菜单，无创建目标时不显示
         if let createSubmenu = buildCreateSubmenu(context: context) {
             let createItem = NSMenuItem(title: "MenuPlus新建", action: nil, keyEquivalent: "")
-            createItem.image = Self.createMenuIcon
+            // 与 "MenuPlus" 父菜单项同图标（宿主 App 图标），视觉统一
+            createItem.image = Self.menuIcon
             createItem.submenu = createSubmenu
             menu.addItem(createItem)
         }
